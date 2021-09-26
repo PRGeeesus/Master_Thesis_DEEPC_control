@@ -112,6 +112,7 @@ class Controller:
     # input should include y,u, y_s, Y_p, g, y_ini
     # minimization parameters: parameters = [u,y,g]
     # u = 3 y = 3, g = 9 so 15 in total?
+    #lskdjflk
     def minimizationFunction(self,parameters):
         # parameters are: [y1,y2,y3 , u1,u2,u3, g1,g2,g3, ..., g(self.sample_size-(self.T_ini + self.T_f))]
         cost = self.costfunction(parameters[0:self.output_size],parameters[self.output_size : self.input_size + self.output_size])
@@ -119,7 +120,8 @@ class Controller:
         third_term = self.regularize_g([parameters[3]])
         #print(cost,second_term,third_term)
         return cost + second_term + third_term
-        def costfunction(self,y,u):
+    
+    def costfunction(self,y,u):
         # implementation of (9) for (8)
         # not shure but I think i need to give the reference waypoint here,
         # as the cost is the difference between the output and the desired tracking of the waypoint
@@ -140,7 +142,7 @@ class Controller:
 
         cost = output_cost + input_cost
         return cost
-        
+
     def getControls(self):
         # return the control for carla in 1 tick
         print("")

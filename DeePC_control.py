@@ -2,9 +2,12 @@
 from operator import matmul
 from random import triangular
 import numpy as np
+from numpy.core.fromnumeric import size
 import scipy.optimize as opt
 
 import sys
+
+from scipy.sparse import data
 
 class Controller:
     # controller has to be initalized with data:
@@ -41,25 +44,18 @@ class Controller:
         #self.U_f = self.U_p_f[L-self.T_f:]
 
         #for regularization:
-        self.lambda_s = 0.000000075 # 7.5 x 10^-8 taken from paper
+        #self.lambda_s = 0.000000075 # 7.5 x 10^-8 taken from paper
+        self.lambda_s = 1 # 7.5 x 10^-8 taken from paper
         self.q_norm = 2
         #self.lambda_g = 500
-        self.lambda_g = 5
+        self.lambda_g = 1
 
         self.init() # done to the initalization matricies up from the data proveided
 
     def getOptimalControlSequence(self):
-        g_star = self.find_g_star()
-        if g_star.success == True:
-            solution = g_star.x
-        else:
-            print("Error, Optimization could not be solved:")
-            print(g_star)
+       
+        y_optimal, u_optimal, g_star = self.find_g_star()
 
-        y_uptimal = solution[:self.input_size]
-        u_uptimal = solution[self.input_size : self.input_size + self.output_size]
-        #print("What are these: ",y_uptimal,u_uptimal)
-        g_star = solution[self.input_size + self.output_size :]
         # u* = U_f x g*
         #print(np.asarray(self.U_f).shape)
         #print(np.asarray(g_star).shape)
@@ -73,7 +69,7 @@ class Controller:
             optimal_inputs.append(u_star[i*3:(i+1)*3])
             predicted_output.append(y_star[i*3:(i+1)*3])
 
-        print("Test: u* = ",u_star," u =",u_uptimal," u* - u:",(u_star[0]-u_uptimal))
+        print("Test: u* = ",u_star," u =",u_optimal," u* - u:",(u_star[0]-u_optimal))
         return optimal_inputs,predicted_output
 
     def find_g_star(self):
@@ -84,42 +80,129 @@ class Controller:
         # fun = funtion = Regularized DeePC for nonlinear noisy systems (8)
         # fun needs y,u,g
         # fun(x, *args) -> float x = n dimensional array
-        g_width = self.sample_size-(self.T_ini + self.T_f) # maybe +1 here, im confused :/
-        x0 = [0.2 for i in range(g_width + self.input_size + self.output_size)]
-        #x0 = [0.1 for i in range(g_width)]
-        print("Dim. of g = ",g_width, " -> should be: ", len(self.data)-(self.T_ini + self.T_f),"initalized with: ",len(x0))
-        #x0 = [0.3,0.1,0.1, 0.1,0.1,0.1, 0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]
-                                        
-        #print(np.asarray(self.U_p).shape)
-        #print(np.asarray(x0[6:]).T.shape)
-        #print(np.asarray(self.y_ini).shape)
-
-        cons = ({'type': 'eq', 'fun': lambda x:  np.matmul(np.asarray(self.U_p),np.asarray(x[6:])) - self.u_ini})
-        #cons = ({'type': 'eq', 'fun': lambda x:  np.matmul(np.asarray(self.U_p),np.asarray(x[6:])) })
+        init_value = 0.3
+        g_width = self.sample_size-(self.T_ini + self.T_f) # maybe +1 here
+        # g is member of R ^ Td-T_ini -T_f # seee abobe (6)
+        # u_ini is R ^ T_ini X inputsize
+        # u is R ^ Tf x input size
+        # y is R ^ Tf x output size
+        x0 = np.full(((g_width + self.T_f*self.input_size + self.T_f*self.output_size)),init_value)
+        #print("Dim. of g = ",g_width, " -> should be: ", len(self.data)-(self.T_ini + self.T_f))
+        #print("Dim of x0: ",np.shape(x0), " ==> ", g_width, " + ", self.T_ini,"*",self.input_size," + ",self.T_f,"*",self.output_size," ")
+        print("x0 shape:",np.shape(x0))                             
         opts ={'maxiter': 100, 'ftol': 0.00001, 'iprint': 1, 'disp': True, 'eps': 0.000001}
+        #opts ={'maxiter': 1000, 'xtol': 0.00001, 'disp': True}
         
-        #       (xmin, xmax) (ymin,ymax)   (yaw min/max)  (throttle) (steer)       (brake)
-        bnds = [(None, None), (None, None),(-180, 180),     (0, 0.2),(-1.0, 1.0),(0, 1.0)]
+        #output_bounds = [(None, None), (None, None),(-180, 180)]
+        #input_bounds = [(0, 0.2),(-1.0, 1.0),(0, 1.0)] 
+        # (xmin, xmax) (ymin,ymax)   (yaw min/max)  (throttle) (steer)       (brake)
+        bnds = []
+        # fill bounds for u
+        for i in range(self.T_f):
+            bnds.append((None, None))
+            bnds.append((None, None))
+            bnds.append((-180, 180))
+        # fill bounds for y
+        for i in range(self.T_f):
+            bnds.append((0, 0.2))
+            bnds.append((-1.0, 1.0))
+            bnds.append((0, 1.0))
+        #bounds for g -> no idea so just leave none
         for i in range(g_width): bnds.append((None, None))
-        #erg = opt.minimize(self.minimizationFunction,x0,method='SLSQP',constraints = cons,options = opts,bounds =bnds)
-        erg = opt.minimize(self.minimizationFunction,x0,method='SLSQP',options = opts,bounds =bnds)
+        print("bounds shape: ",np.shape(bnds))
+        
+        # constrains:
+        ub = lb = np.zeros(self.T_ini*self.input_size + self.T_f*self.input_size + self.T_f*self.output_size )
+        print("constrains shape:" ,np.shape(ub))
+        nlc = opt.NonlinearConstraint(self.nlconstrains, ub, lb)
+        '''cons = ({'type': 'eq', 'fun': self.constrain1},
+                {'type': 'eq', 'fun': self.constrain2},
+                {'type': 'eq', 'fun': self.constrain3})'''
+
+        cons = ({'type': 'eq', 'fun': self.constrain1})
+
+        # this solves but does not use constraints
+        #erg = opt.minimize(self.minimizationFunction,x0,method='SLSQP',options = opts,bounds =bnds)
+
+        erg = opt.minimize(self.minimizationFunction,x0,method='SLSQP',constraints = cons,options = opts,bounds =bnds)
+        #erg = opt.minimize(self.minimizationFunction,x0,method='SLSQP',constraints = nlc,options = opts,bounds =bnds)
+        #erg = opt.minimize(self.minimizationFunction,x0,method='trust-constr',options = opts,bounds =bnds,constraints=cons)
         #print(erg)
-        return erg
+        if erg.success == True:
+            solution = erg.x
+            y_uptimal = solution[:self.input_size*self.T_f]
+            u_uptimal = solution[self.input_size*self.T_f : self.input_size*self.T_f + self.output_size*self.T_f]
+            #print("What are these: ",y_uptimal,u_uptimal)
+            g_star = solution[self.input_size*self.T_f + self.output_size*self.T_f :]
+        else:
+            print("Error, Optimization could not be solved:")
+            print(erg)
+            y_uptimal = u_uptimal = g_star = None
 
+        return y_uptimal,u_uptimal,g_star
 
+    # U_p*g - u_ini = 0
+    def constrain1(self,x0):
+        g = x0[self.input_size*self.T_f + self.output_size*self.T_f : ]
+        u_ini = np.reshape(self.u_ini,(self.T_ini*self.input_size))
+        return np.matmul(self.U_p,g) - u_ini
+    # U_f*g - u = 0
+    def constrain2(self,x0):
+        g = x0[self.input_size*self.T_f + self.output_size*self.T_f : ]
+        u = x0[self.output_size*self.T_f : self.input_size*self.T_f + self.output_size*self.T_f]
+        return np.matmul(self.U_f,g) - u
+        
+    # Y_f*g - y = 0
+    def constrain3(self,x0):
+        g = x0[self.input_size*self.T_f + self.output_size*self.T_f : ]
+        y = x0[0:self.output_size*self.T_f]
+        return np.matmul(self.Y_f,g) - y
 
+    def nlconstrains(self,x0):
+        y = x0[0:self.output_size*self.T_f]
+        #y = np.reshape(y,(self.T_f,self.output_size))
+        u = x0[self.output_size*self.T_f : self.input_size*self.T_f + self.output_size*self.T_f]
+        #u = np.reshape(u,(self.T_f,self.input_size))
+        g = x0[self.input_size*self.T_f + self.output_size*self.T_f : ]
+
+        #print("self.U_p", np.shape(self.U_p))
+        #print("self.U_f", np.shape(self.U_f))
+        #print("self.Y_f", np.shape(self.Y_f))
+        data_vector =np.vstack((self.U_p, self.U_f,self.Y_f))
+        #print("[U_p U_f Y_f] shape = ",np.shape(data_vector))
+
+        #print("g shape:",np.shape(g))
+        u_ini = np.reshape(self.u_ini,(self.T_ini*self.input_size))
+        #print("u_ini",np.shape(u_ini),u_ini)
+        #print("u shape: ",np.shape(u),u)
+        #print(" y shape: ",np.shape(y),y)
+        a_vector = np.hstack((u_ini,y,u))
+        a_vector = a_vector[:,None].flatten()
+        #print(" a_vector",np.shape(a_vector))
+        ans = np.matmul(data_vector,g) - a_vector
+        print(ans)
+        return ans
     # this is what is written in the summation in equation (8)
     # input should include y,u, y_s, Y_p, g, y_ini
     # minimization parameters: parameters = [u,y,g]
     # u = 3 y = 3, g = 9 so 15 in total?
-    #lskdjflk
     def minimizationFunction(self,parameters):
         # parameters are: [y1,y2,y3 , u1,u2,u3, g1,g2,g3, ..., g(self.sample_size-(self.T_ini + self.T_f))]
-        cost = self.costfunction(parameters[0:self.output_size],parameters[self.output_size : self.input_size + self.output_size])
-        second_term = self.lambda_s*np.linalg.norm((np.matmul(self.Y_p,parameters[6:]) - self.y_ini),self.q_norm)**2
-        third_term = self.regularize_g([parameters[3]])
+        y = parameters[0:self.output_size*self.T_f]
+        y = np.reshape(y,(self.T_f,self.output_size))
+        u = parameters[self.output_size*self.T_f : self.input_size*self.T_f + self.output_size*self.T_f]
+        u = np.reshape(u,(self.T_f,self.input_size))
+        g = parameters[self.input_size*self.T_f + self.output_size*self.T_f: ]
+        y_ini = self.y_ini.flatten()
+        sum_term = 0
+
+        second_term = self.lambda_s*np.linalg.norm((np.matmul(self.Y_p,g) - y_ini),self.q_norm)**2
+        third_term = self.regularize_g(g)
+        for i in range(self.T_f):
+            cost = self.costfunction(y[i],u[i])
+            sum_term = cost + second_term + third_term
         #print(cost,second_term,third_term)
-        return cost + second_term + third_term
+        return sum_term
     
     def costfunction(self,y,u):
         # implementation of (9) for (8)
@@ -131,9 +214,10 @@ class Controller:
         #    self.updateReferenceWaypoint(self.reference_waypoint)
         
         # self.y_r = reference waypoint
+        
         y_diff = np.asarray(y) - np.asarray(self.y_r) 
         u_diff = np.asarray(u) - np.asarray(self.u_r)
-
+        
         temp  = np.matmul(y_diff,self.Q)
         output_cost = np.matmul(temp,y_diff)
 
@@ -143,29 +227,28 @@ class Controller:
         cost = output_cost + input_cost
         return cost
 
-    def getControls(self):
-        # return the control for carla in 1 tick
-        print("")
-
-    def updateController(self):
-        print("")
-        # update the controller parameters, such as moast recent inout output measures
-
-    def updateInputOutputMeasures(self,outputs,inputs):
+    def updateInputOutputMeasures(self,inputs,outputs):
         if len(inputs) != self.input_size or len(outputs) != self.output_size:
             print("Tried to update wrongly sized in/outputs in updateInputOutputMeasures()")
-        
-        for element in inputs:
-            self.u_ini.append(element)
-        if len(self.u_ini) > self.T_ini * self.input_size:
-            for i in range(3): self.u_ini.pop(0)
-            
-        for element in outputs:
-            self.y_ini.append(element)
-        if len(self.y_ini) > self.T_ini * self.output_size:
-            for i in range(3): self.y_ini.pop(0)
+        if len( self.u_ini) == 0:
+             self.u_ini = np.zeros(self.input_size)
+        if len( self.y_ini) == 0:
+             self.y_ini = np.zeros(self.output_size)
 
-        #print(self.u_ini)
+        npa_inputs = np.array(inputs)
+        npa_outputs = np.array(outputs)
+        self.u_ini = np.vstack([self.u_ini, npa_inputs])
+        self.y_ini = np.vstack([self.y_ini, npa_outputs])
+        
+        #shifting so that uini and y ini are always T_ini x input/output size
+        while(np.shape(self.u_ini)[0] > self.T_ini):
+            self.u_ini = np.delete(self.u_ini, (0), axis=0)
+        
+        while(np.shape(self.y_ini)[0] > self.T_ini):
+            self.y_ini = np.delete(self.y_ini, (0), axis=0)
+
+
+
 
     # returns None if sequence of signals is not long enough or L was chosen too large
     def generateHankel(self,L,innput):
@@ -218,7 +301,6 @@ class Controller:
     def regularize_g(self,g):
         if self.y_r == []:
             print("Reference output not defined. Where do you even want to go?")
-
         g_reg = self.get_g_r(g)
         r = self.lambda_g * np.linalg.norm((g-g_reg),self.q_norm)
         return r
@@ -272,28 +354,28 @@ class Controller:
         return erg
     def TestFunction(self):
         np.set_printoptions(threshold=sys.maxsize)
-        #print(" --- Output Data:")
-        #print(self.output_sequence)
-        #print(" ---  Input Data:")
-        #print(self.input_sequence)
+        #print("Data shape: ", np.shape(self.data))
+        #print(" --- Output Data shape:",np.shape(self.output_sequence))
+        #print(" ---  Input Data shape:",np.shape(self.input_sequence))
 
-        print(" ---- Hankel Matrix out of Output data:")
-        print(self.Y_p_f)
+        #print(" ---- Hankel Matrix out of Output data:")
+        #print(self.Y_p_f)
         print("It has dimension: ",np.shape(self.Y_p_f)," - should be ",self.L * len(self.output_sequence[0]) ," X ",len(self.output_sequence)-self.L)
         print(" -- The first ",self.T_ini," samples from \"Output data\" that is self.Y_p:")
-        print(self.Y_p)
+        print(np.shape(self.Y_p))
+        #print(self.Y_p)
         print(" -- The Last ", self.T_f, " samples from \"Output data\" that is self.Y_f:")
-        print(self.Y_f)
-        print(" --- RAW Data Display Complete: --- \n\n")
+        print(np.shape(self.Y_f))
+        #print(self.Y_f)
         testinput = self.input_sequence[:12]
         testoutput = self.output_sequence[:12]
-        print("Testing: updateInputOutputMeasures(",testinput," , ",testoutput,")")
+        print("testinput: ",np.shape(testinput))
+        print("testoutput: ",np.shape(testoutput))
+        print("Testing: updateInputOutputMeasures")
         for i in range(len(testinput)):
             self.updateInputOutputMeasures(testinput[i],testoutput[i])
-        print("updated u_ini:")
-        print(self.u_ini)
-        print("updated y_ini:")
-        print(self.y_ini)
+        print("updated u_ini shape:",np.shape(self.u_ini))
+        print("updated y_ini shape:",np.shape(self.y_ini))
 
         reference = [5,-70,0]
         print("Testing: updateReferenceWaypoint(",reference,")")
@@ -305,8 +387,10 @@ class Controller:
         #x0 = [0.1 for i in range(g_width + self.input_size + self.output_size)]
         #print(np.shape(np.asarray(self.U_p))," X ",np.shape(np.asarray(x0[6:])), " - ",np.shape(np.asarray(self.u_ini)))
         #np.matmul(np.asarray(self.U_p),np.asarray(x0[6:])) - self.u_ini}
-        erg = self.find_g_star()
-        print("Erg: ",erg)
+        y_out,u_out,g_star = self.find_g_star()
+        print("g_star: {g_star} dim: ",np.shape(g_star),"")
+        print("u_out: {u_out} dim: ",np.shape(u_out),"")
+        print("y_out: {y_out} dim: ",np.shape(y_out),"")
 
 
     def init(self):
@@ -316,8 +400,8 @@ class Controller:
         # into u_d and y_d of length T_d
         for i in self.data:
             self.output_sequence.append(i[:self.output_size])
-            self.input_sequence.append(i[self.input_size:])
-        
+            self.input_sequence.append(i[self.output_size:])
+       
         # variable for dimensions
         self.L = self.T_ini + self.T_f #is passed upon initalization
         

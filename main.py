@@ -27,7 +27,8 @@ import martinCarlaLibrary
 import carlaHelper as cHelper
 import matplotlib.pyplot as plt
 import DeePC_control as DeePCC
-import random
+import DeePC_control_2 as DeePCC2
+import DeePC_OSQP as DeePC_OSQP
 
 actor_list = [] # store everything that has to be destroyed
 
@@ -58,34 +59,29 @@ def spawn_car(world,x=0,y=0,**kwargs):
 
 
 # define waypoints
+"""
+#data2 = cHelper.readFromCSV("sample_waypoints")
+data2 = cHelper.readFromCSV("sample_waypoints_2")
+#data2 = cHelper.readFromCSV("TestData")
+#data2 = cHelper.readFromCSV("manual_recording")
+data2 = np.array(data2)
+data2 = data2[:100,:]
 
-data = cHelper.readFromCSV("sample_waypoints")
-#data = [[j + 0.1*i for i in range(1,7)] for j in range(1,44+1)]
-#print(data)
-# using this instead to better debug the matricies
-#data = [[i,i,i,-i,-i,-i] for i in range(30)] # [output, output, output, input,input,input]
-#controller = DeePCC.Controller(data,5,6,3,3) # data, T_ini, T_f , nr inputs, nr outputs
-#controller.TestFunction()
-#exit()
+C3 = DeePC_OSQP.Controller(data2, 5, 5, 3, 3)
+C3.updateReferenceWaypoint([10,-70,0])
+C3.test_erg()
 
-#reference = [5,-70,0]
-#controller.updateReferenceWaypoint(reference) # x,y,yaw -> TODO: this should maybe include speed
-#controller.updateInputOutputMeasures([2.0,5.0,0.0],[0.2,0.2,0.0])
-#optim_control,prediction = controller.getOptimalControlSequence()
+exit()
+C3.solve_for_x_regularized()
+u,y,u_star,y_star,g = C3.getInputOutputPrediction()
+print("u : ",u)
+print("u*: ",u_star)
+print("y : ",y)
+print("y*: ",y_star)
+#print("g : ",g)
 
-
-
-#for i in range(10): controller.updateInputOutputMeasures([random.random()+1,random.random()-100,0.0],[random.random()*0.5,random.random(),0.0])
-
-#cost = controller.costfunction([2,20,0.2],[2,20,0.2],[0.0,0.0,0.0])
-#temp = [[-0.28545455],[-0.21560606],[-0.14575758],[-0.07590909],[-0.00606061],[ 0.06378788],[ 0.13363636],[ 0.20348485],[ 0.27333333]]
-#temp2 = [[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]]
-#gr = controller.get_g_r(temp)
-#control,prediction = controller.getOptimalControlSequence() # workd exepet for the equality constrain
-#print(control[0])
-#print(prediction[0])
-
-
+exit()
+"""
 
 def main():
     global actor_list
@@ -103,26 +99,32 @@ def main():
         settings.no_rendering_mode = False
         #settings.no_rendering_mode = True # Enable this to not Render
         world.apply_settings(settings)
-        # starttick = world.tick()
-
 
         # load the pre-recorded data
-        data = cHelper.readFromCSV("sample_waypoints")
-        #data = cHelper.readFromCSV("manual_recording")
-        data = data[:331]
+        #data2 = cHelper.readFromCSV("sample_waypoints")
+        data2 = cHelper.readFromCSV("sample_waypoints_2")
+        #data2 = cHelper.readFromCSV("manual_recording")
+        data2 = data2[:350]
         #data = [[i,i,i,-i,-i,-i] for i in range(30)] # [output, output, output, input,input,input] -> for debugging
 
         # init the controller
-        controller = DeePCC.Controller(data,5,6,3,3) # data, T_ini, T_f , nr inputs, nr outputs
+        #controller = DeePCC.Controller(data,5,6,3,3) # data, T_ini, T_f , nr inputs, nr outputs
+        C3 = DeePC_OSQP.Controller(data2,6,6,3,3)
         # the reference point is y_r and also drawn in red on the track
-        reference = [10.0,-50.0,0.0]
-        controller.updateReferenceWaypoint(reference) # x,y,yaw -> TODO: this should maybe include speed
-        cHelper.drawWaypoints([reference],world,[255,0,0],20.0)
         for i in range(12):
-            controller.updateInputOutputMeasures(controller.output_sequence[i],controller.input_sequence[i])
+            #controller.updateInputOutputMeasures(controller.output_sequence[i],controller.input_sequence[i])
+            C3.updateIn_Out_Measures(C3.input_sequence[i], C3.output_sequence[i])
 
 
-        temp = cHelper.spawn_car(actor_list,world,2,-30)
+        temp,starting_transform = cHelper.spawn_car(actor_list,world,10,-60)
+
+        starting_x = starting_transform.location.x
+        starting_y = starting_transform.location.y
+        offset = [starting_x,starting_y,0,0]
+        print("Starting Pos of Car:",starting_x,starting_y)
+        reference = [-10.0 + starting_x ,10.0 + starting_y, 0.0]
+        C3.updateReferenceWaypoint(reference)
+        cHelper.drawWaypoints([reference],world,[255,0,0],20.0)
         for v in actor_list:
             v.set_autopilot(True,tm_port)
         
@@ -135,40 +137,51 @@ def main():
         while(1):
             tick = tick + 1
 
-            control = temp.get_control()
-            transform = temp.get_transform()
-            outputs = [transform.location.x,transform.location.y,transform.rotation.yaw]
-            inputs = [control.throttle, control.steer, control.brake]
 
             #start filling y_ini and u_ini             
-            controller.updateInputOutputMeasures(outputs,inputs)
-            if tick > 10:
-                print("DeePC Controller Taking over:")
+            if tick > 20:
+                #print("DeePC Controller Taking over:")
+                time.sleep(0.1)
                 for v in actor_list:
                     v.set_autopilot(False,tm_port)
-                prediction = []
-                optim_control = [[0.0,0.0,1.0]]
-                optim_control,prediction = controller.getOptimalControlSequence() # workd exepet for the equality constrain
+                
+                #optim_control,prediction = controller.getOptimalControlSequence() # workd exepet for the equality constrain
+                u,y,u_star,y_star,g = C3.getInputOutputPrediction(True)
 
-                if optim_control != [] and prediction != []:
-                    print("optim_control: ",optim_control[0])
-                    print("prediction:",prediction[0])
-                    cHelper.drawWaypoints(prediction,world,[0,0,255],1.0)
+                cHelper.drawWaypoints(u_star,world,[0,0,255],1.0)
                 #figure out longitudal control
 
                 #figure out lateral control
 
                 # apply control
-                    temp.apply_control(carla.VehicleControl(
-                                        throttle = optim_control[0][0],
-                                        steer = optim_control[0][1],
-                                        brake = 0.0,
-                                        hand_brake = False,
-                                        reverse = False,
-                                        manual_gear_shift = False,
-                                        gear = 0))
-            
+                temp.apply_control(carla.VehicleControl(
+                                    throttle = u_star[0][0],
+                                    steer = u_star[0][1],
+                                    brake = 0.0,
+                                    hand_brake = False,
+                                    reverse = False,
+                                    manual_gear_shift = False,
+                                    gear = 0))
 
+            control = temp.get_control()
+            transform = temp.get_transform()
+            outputs = [transform.location.x-starting_x,transform.location.y-starting_y,transform.rotation.yaw]
+            
+            throttle = 0
+            if control.throttle > 1.0:
+                throttle = 1.0
+            else:
+                throttle = control.throttle
+            steer = 0
+            if control.steer > 180:
+                steer = 180
+            elif control.steer < -180:
+                steer = -180
+            else:
+                steer = control.steer
+
+            inputs = [throttle, steer, control.brake]
+            C3.updateIn_Out_Measures(inputs,outputs,True)
 
 
             

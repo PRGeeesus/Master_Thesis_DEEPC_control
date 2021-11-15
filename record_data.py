@@ -59,10 +59,10 @@ def spawn_car(world,x=0,y=0,**kwargs):
 
 # define waypoints
 
-data = cHelper.readFromCSV("sample_waypoints")
+#data = cHelper.readFromCSV("sample_waypoints")
 # using this instead to better debug the matricies
 #data = [[i,i,i,-i,-i,-i] for i in range(30)] # [output, output, output, input,input,input]
-controller = DeePCC.Controller(data,5,6,3,3) # data, T_ini, T_f , nr inputs, nr outputs
+#scontroller = DeePCC.Controller(data,5,6,3,3) # data, T_ini, T_f , nr inputs, nr outputs
 
 
 
@@ -98,8 +98,9 @@ def main():
         world.apply_settings(settings)
         starttick = world.tick()
 
-
-        temp = cHelper.spawn_car(actor_list,world,2,-30)
+        starting_x = -80
+        starting_y = -60
+        temp,starting_transform = cHelper.spawn_car(actor_list,world,starting_x,starting_y)
         for v in actor_list:
             v.set_autopilot(True,tm_port)
         
@@ -107,50 +108,8 @@ def main():
         sample_waypoints = []
 
         #cHelper.drawWaypoints(data,world,[10,0,255],0.0)
-        time.sleep(1)
-        tick = 0
-        while(1):
-            tick = tick + 1
-            control = temp.get_control()
-            transform = temp.get_transform()
-            outputs = [transform.location.x,transform.location.y,transform.rotation.yaw]
-            inputs = [control.throttle, control.steer, control.brake]
-            
-            #start filling ty_ini and u_ini            
-            controller.updateInputOutputMeasures(outputs,inputs)
-
-            print(controller.y_ini)
-            if tick > 20:
-                print("DeePC Controller Taking over:")
-                for v in actor_list:
-                    v.set_autopilot(False,tm_port)
-                prediction = []
-                optim_control = []
-                optim_control,prediction = controller.getOptimalControlSequence() # workd exepet for the equality constrain
-
-                if optim_control != [] and prediction != []:
-                    print(optim_control[0])
-                    print(prediction[0])
-                    cHelper.drawWaypoints(prediction,world,[0,255,0],1.0)
-                # figure out longitudal control
-
-                #figure out lateral control
-
-                # apply control
-                    temp.apply_control(carla.VehicleControl(
-                                        throttle = optim_control[0][0],
-                                        steer = optim_control[0][1],
-                                        brake = 0.0,
-                                        hand_brake = False,
-                                        reverse = False,
-                                        manual_gear_shift = False,
-                                        gear = 0))
-            
-
-
-
-            
-        #cHelper.recordData(client,world,temp)
+        time.sleep(3)     
+        cHelper.recordData(client,world,temp,40,400)
 
     except KeyboardInterrupt:
         print("Simulation terminated by Hand")

@@ -61,5 +61,41 @@ def SincOptimization():
     print(erg)
     print(minimizationFunction(erg.x))
 
+def findMinofX2():
+    x0 = [5.0,5.0] # inital Guesss
 
-SincOptimization()
+    # options
+    opts ={'maxiter': 1000, 'ftol': 0.001, 'iprint': 1, 'disp': True, 'eps': 0.00000001}
+
+    # bounds
+    bnds = [(0, None),(0,None)]
+
+    def minimizationFunction(parameters):
+        x1 = parameters[0]
+        x2 = parameters[1]
+        x = [x1,x2]
+        temp = np.matmul([[1,0],[0,1]],x)
+        temp = np.matmul(x,temp) + 1
+
+        erg = temp + np.matmul([1,0],x)
+
+        return erg
+    def constrain1(x0):
+        x1 = x0[0]
+        x2 = x0[1]
+        return 3*x1 - x2 + 4
+    
+    def constrain2(x0):
+        x2 = x0[1]
+        return 2*x2 -1 
+
+    #cons = ({'type': 'eq', 'fun': constrain1},
+    #        {'type': 'eq', 'fun': constrain2})
+    cons = ({'type': 'eq', 'fun': constrain1})
+
+    erg = opt.minimize(minimizationFunction,x0,method='SLSQP',constraints = cons,options = opts,bounds =bnds)
+    print(erg)
+    print(minimizationFunction(erg.x))
+
+
+findMinofX2()

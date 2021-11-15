@@ -1,0 +1,13 @@
+{
+    "python.testing.unittestArgs": [
+        "-v",
+        "--failfast",
+        "-s",
+        "./Tests",
+        "-p",
+        "*_test.py",
+        "--locals"
+    ],
+    "python.testing.pytestEnabled": false,
+    "python.testing.unittestEnabled": true
+}

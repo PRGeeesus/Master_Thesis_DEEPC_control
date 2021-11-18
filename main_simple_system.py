@@ -77,10 +77,10 @@ def main():
     predictions_y = []
     applied_inputs = []
     soll = [SOLLWERT]
-    for i in range(200):
+    for i in range(1,200):
         #if i == 50:
         #    ctrl.updateReferenceWaypoint([20])
-        
+        ctrl.updateReferenceWaypoint([10*np.sin((np.pi*2*(1/200)*i))])
         u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
         
         soll.append(ctrl.y_r[0])
@@ -99,7 +99,7 @@ def main():
     titlesting = "T_ini:" + str(T_ini) + " T_f:" + str(T_f) +" lg:" + str(ctrl.lambda_g) + " ls:"+ str(ctrl.lambda_s)
     plt.title(titlesting)
     ax1.set_ylabel("Outputs")
-    ax1.plot(original_data,label='Init Data')
+    #ax1.plot(original_data,label='Init Data')
     ax1.plot(soll,label='SOLLWERT',c="y")
     ax1.plot(predictions_y,label='predictions',c="r")
     ax1.plot(outputs2,label="system behaviour",c="g")

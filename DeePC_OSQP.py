@@ -3,12 +3,7 @@ import sys
 import numpy as np
 import scipy.optimize as opt
 from scipy import sparse
-
-def p_name_shape(func):                                                                                     
-    def inner(objs):                                                                                         
-        print(str(objs)," shape: ",np.shape(objs),objs)                                                     
-        return func(objs)                                                                                                                                                                                 
-    return inner            
+         
 
 class Controller:
     # controller has to be initalized with data:
@@ -27,13 +22,15 @@ class Controller:
         self.output_size = output_size
 
         # defines:
-        self.u_r = np.array([0.1,0.0,0.0]) # steady state reference inout is no throttle, steer or brake
-        self.y_r = np.array([1.0,2.0,3.0]) # steady state reference output should probably be the reference waypoint I want to reach ?
+        self.u_r = np.array([0.0 for i in range(self.input_size)]) # steady state reference inout is no throttle, steer or brake
+        self.y_r = np.array([0.0 for i in range(self.output_size)]) # steady state reference output should probably be the reference waypoint I want to reach ?
 
         #self.Q = np.matrix([[40,0,0],[0,40,0],[0,0,40]]) #tracking error cost Martix taken from paper
-        self.Q = np.asarray([[1,0,0],[0,1,0],[0,0,1]])
-        #self.R = np.matrix([[160,0,0],[0,4,0],[0,0,4]])  # quardatic control effort cost
-        self.R = np.asarray([[1,0,0],[0,1,0],[0,0,1]])
+        
+        self.Q = np.eye(self.output_size)
+        #self.Q = np.asarray([[1,0,0],[0,1,0],[0,0,1]])
+        self.R = np.eye(self.input_size)
+        #self.R = np.asarray([[1,0,0],[0,1,0],[0,0,1]]) # quardatic control effort cost
         
         #to be updated as the controller runs:
 
@@ -60,8 +57,8 @@ class Controller:
         self.recalculate_g_r()
 
 
-        self.lambda_s = 0.1
-        self.lambda_g = 10
+        self.lambda_s = 1 #weight of softned inital constraint
+        self.lambda_g = 1 #weight on regularization of g
 
         # all the initalization for the SOlver:
         init_value = 0.5   
@@ -82,13 +79,13 @@ class Controller:
         self.q = self.calculate_q()
         self.A = self.calculate_A()
 
-        self.output_constrains_lb = [0,0,-180.0]
-        self.output_constrains_ub = [0,0,180.0]
-        self.input_constrains_lb  = [0,-1.0,0.0]
-        self.input_constrains_ub = [1.0,1.0,1.0]
+        self.output_constrains_lb = [0.0 for i in range(self.output_size)]
+        self.output_constrains_ub = [0.0 for i in range(self.output_size)]
+        self.input_constrains_lb  = [0.0 for i in range(self.input_size)]
+        self.input_constrains_ub = [0.0 for i in range(self.input_size)]
         
         self.calculate_bounds_u_l()
-        
+
     def update_P(self):
         self.P = self.calculate_P()
     
@@ -117,14 +114,14 @@ class Controller:
         #print("P_y shape :",np.shape(P_y))
         #print("P_g shape :",np.shape(P_g),P_g)
         #print("x0 shape :",np.shape(x0))
-        # TODO: THese shapes are STATIC!!!
+
         zeros_15_15 = np.zeros((self.T_f*self.output_size, self.T_f*self.output_size))
         zeros_15_43 = np.zeros((self.T_f*self.output_size,self.data_length-self.L))
         zeros_43_15 = np.zeros((self.data_length-self.L, self.T_f*self.output_size))
         P = np.block([[P_u,zeros_15_15,zeros_15_43],
                  [zeros_15_15,P_y,zeros_15_43],
                  [zeros_43_15,zeros_43_15,P_g]])
-        P = sparse.csc_matrix(P)
+        P = sparse.csc_matrix(2*P)
         return P
 
     # update when y_ini, y_r, u_r, Q, R, lambda_g, lambda_s changes
@@ -137,23 +134,25 @@ class Controller:
         Returns
         -------
         out : matrix q
-            Matrix of given shape.
-
+              Matrix of given shape.
         """
-        temp1 = np.matmul(2.*np.array(self.y_r),self.Q)# TODO: maybe -
+        temp1 = np.matmul(-2.0*np.array(self.u_r),self.R)# TODO: maybe -
         q_u = temp1
-        for i in range(self.T_f-1):
+        for i in range(1,self.T_f):
             q_u = np.hstack((temp1,q_u))
-        temp2 = np.matmul(2.*np.array(self.u_r),self.R) # TODO: maybe -
+        temp2 = np.matmul(-2.0*np.array(self.y_r),self.Q) # TODO: maybe -
         q_y = temp2
-        for i in range(self.T_f-1):
+        for i in range(1,self.T_f):
             q_y = np.hstack((temp2,q_y))
         #print(q_y)
         #print("self.y_ini",np.shape(self.y_ini)," self.Y_p",np.shape(self.Y_p))
-        q_g_first_term = np.matmul(self.y_ini.flatten().T,self.Y_p)*2.0*self.lambda_s # TODO: maybe -
-        q_g_second_term = self.lambda_g*2.0*self.g_r.T # TODO: maybe -
+        q_g_first_term = np.matmul(self.y_ini.flatten().T,self.Y_p)*-2.0*self.lambda_s # TODO: maybe -
+        q_g_second_term = self.lambda_g*-2.0*self.g_r.T # TODO: maybe -
+        #print("q_u",np.shape(q_u))
+        #print("q_y",np.shape(q_y))
         #print("q_g_first_term",np.shape(q_g_first_term))
         #print("q_g_second_term",np.shape(q_g_second_term))
+
         q_g = q_g_first_term + q_g_second_term
         
         q = np.hstack((q_y,q_g))
@@ -181,43 +180,37 @@ class Controller:
         return A
 
     def calculate_bounds_u_l(self):
-
         # bounds to make it for the description
-        upper_bound = 0.0
-        zeros_u = [[upper_bound] for i in range(self.input_size*self.T_f)]
-        zeros_y = [[upper_bound] for i in range(self.output_size *self.T_f)]
+        #l_y_lb = [self.output_constrains_lb for i in range(self.T_f)]
+        l_y_lb = [[0] for i in range(self.T_f)]
+
+        #l_u_lb = [self.input_constrains_lb for i in range(self.T_f)]
+        l_u_lb = [[0] for i in range(self.T_f)]
+
+        #u_y_ub = [self.output_constrains_ub for i in range(self.T_f)]
+        u_y_ub = [[0] for i in range(self.T_f)]
+
+        #u_u_ub = [self.input_constrains_ub for i in range(self.T_f)]
+        u_u_ub = [[0] for i in range(self.T_f)]
+        
+        
         u_ini_flat = np.reshape(self.u_ini,(self.input_size*self.T_ini,1))
-        l = np.vstack((zeros_u,zeros_y))
-        l = np.vstack((u_ini_flat,l))
-        print("l: ",np.shape(l),l)
+        #u_ini_flat = [[0] for i in range(self.input_size*self.T_ini)]
+        lb = np.vstack((l_u_lb,l_y_lb))
+        lb = np.vstack((u_ini_flat,lb))
+
+        ub = np.vstack((u_u_ub,u_y_ub))
+        ub = np.vstack((u_ini_flat,ub))
+
+        #print("lb: ",np.shape(lb),lb)
+        #print("ub: ",np.shape(ub),ub)
         
-        self.u = l
-        self.l = l
-
-        l = np.array([upper_bound])
-        u = np.array([upper_bound])
-
-        # bounds to constrain u and i
-        for i in range(1,self.data_length-self.L):
-            l = np.vstack((l, [upper_bound]))
-            u = np.vstack((u,  [upper_bound]))
-
-        # y
-        for i in range(self.T_f):
-            l = np.vstack((l,  np.reshape(self.output_constrains_lb, (self.output_size,1))))
-            u = np.vstack((u,  np.reshape(self.output_constrains_ub, (self.output_size,1))))
-        # u
-        for i in range(self.T_f):
-            l = np.vstack((l,  np.reshape(self.input_constrains_lb, (self.input_size,1))))
-            u = np.vstack((u,  np.reshape(self.input_constrains_ub, (self.input_size,1))))
+        self.ub = ub
+        self.lb = lb
         
-        self.u = self.u + u
-        self.l = self.l + l
-
     # TODO: adapt
     def getInputOutputPrediction(self,verbose = False):
         x0_result = self.solve_for_x_regularized()
-
         g = x0_result[self.T_f*self.input_size + self.T_f*self.output_size : ]
         u = x0_result[:self.T_f*self.input_size]
         u_star = np.reshape(np.matmul(self.U_f,g),(self.T_f,self.input_size))
@@ -252,46 +245,98 @@ class Controller:
 
         print("xPx + xq = ",one," + ",two," = ",one+two)
 
+    def minFunction(self,x):
+        x_ = np.asarray(x)
+        temp = np.matmul(self.P.toarray(),x_)
+        first_term = np.matmul(x_.T,temp)
+        second_term = np.matmul(self.q,x_)
+
+        return first_term + second_term
 
     def solve_for_x_regularized(self):
-
-        #for i in range(self.input_size*self.T_f):
-        #    u[self.input_size*self.T_f + self.output_size*self.T_f + i] = u[self.input_size*self.T_f + self.output_size*self.T_f + i]*-1
+        """
+        x0 = [0.01 for i in range(self.T_f*self.input_size + self.T_f*self.output_size + (self.data_length-self.L))]
+        #print(np.shape(self.lb.flatten()),np.shape(self.ub))
+        constr = opt.LinearConstraint(self.A.toarray(), self.lb.flatten(), self.ub.flatten())
+        bnd = [(self.input_constrains_lb[0],self.input_constrains_ub[0])]
+        cons = ({'type': 'ineq', 'fun': lambda x:  np.matmul(self.A.toarray(),x) + self.lb.flatten()},
+                {'type': 'ineq', 'fun': lambda x:  np.matmul(-self.A.toarray(),x) + self.ub.flatten()})
+        #print(bnd)
+        for i in range(1,self.T_f):
+            bnd.append((self.input_constrains_lb[0],self.input_constrains_ub[0]))
+        for i in range(self.T_f):
+            bnd.append((self.output_constrains_lb[0],self.output_constrains_ub[0]))
+        for i in range(self.data_length-self.L):
+            bnd.append((None,None)) 
         
-        #print("u: ",np.shape(u),u)
+        erg = opt.minimize(self.minFunction,x0,method = "SLSQP",constraints = cons,bounds = bnd)
+        #print(erg)
+        return erg.x
         """
-        l = np.array([g_lower_bound])
-        u = np.array([g_upper_bound])
-
-        for i in range(1,g_len):
-            l = np.vstack((l, [g_lower_bound]))
-            u = np.vstack((u,  [g_upper_bound]))
-
-        for i in range(self.T_f):
-            l = np.vstack((l,  np.reshape(self.output_constrains_lb, (self.output_size,1))))
-            u = np.vstack((u,  np.reshape(self.output_constrains_ub, (self.output_size,1))))
-
-        for i in range(self.T_f):
-            l = np.vstack((l,  np.reshape(self.input_constrains_lb, (self.input_size,1))))
-            u = np.vstack((u,  np.reshape(self.input_constrains_ub, (self.input_size,1))))
-        #l = np.flip(l)
-        #u = np.flip(u)
-        #print("lower bounds: ",np.shape(l),l)
-        """
-
+        
         prob = osqp.OSQP()
-        prob.setup(self.P, self.q, self.A, self.l, self.u, alpha=0.01,max_iter= 10000,verbose = False)
+        prob.setup(self.P, self.q, self.A, l = self.lb, u = self.ub, eps_rel  = 0.1,adaptive_rho = False, polish = False,alpha=1,max_iter= 10000,verbose = False)
         res = prob.solve()
-        #print(res.x)
-
-        #erg = opt.minimize(self.minFunction_regularized,x0,method='SLSQP',constraints = cons,options = opts,bounds =bnds)
         return res.x
+        
+
+    def updateIOConstrains(self,input_lb,input_ub,output_lb,output_ub):
+        if len(self.input_constrains_lb) == len(input_lb):
+            self.input_constrains_lb = input_lb
+        if len(self.input_constrains_ub) == len(input_ub):
+            self.input_constrains_ub = input_ub
+        if len(self.output_constrains_lb) == len(output_lb):
+            self.output_constrains_lb = output_lb
+        if len(self.output_constrains_ub) == len(output_ub):
+            self.output_constrains_ub = output_ub
+        
+        self.calculate_bounds_u_l()
 
     def updateReferenceWaypoint(self,new_y_r):
         if len(new_y_r) != self.output_size:
             print("Wrong size for reference point. Must be: ",self.output_size)
         self.y_r = new_y_r
         self.recalculate_g_r
+        self.update_q()
+    
+    def updateReferenceInput(self,new_u_r):
+        if len(new_u_r) != self.input_size:
+            print("Wrong size for reference point. Must be: ",self.output_size)
+        self.u_r = new_u_r
+        self.recalculate_g_r
+        self.update_q()
+    
+    def updateControlCost_R(self,new_R):
+        if np.shape(new_R) != np.shape(self.R):
+            print("Wrong dimension for updatad Control Cost")
+        else:
+            self.R = new_R
+            self.update_P()
+            self.update_q()
+
+    def updateTrackingCost_Q(self,new_Q):
+        if np.shape(new_Q) != np.shape(new_Q):
+            print("Wrong dimension for updatad Control Cost")
+        else:
+            self.R = new_Q
+            self.update_P()
+            self.update_q()
+    
+    # TODO: bind the size
+    def update_lambda_g(self,new_lambda_g):
+        """
+        weight on regularization of g
+        """
+        self.lambda_g = new_lambda_g
+        self.update_P()
+        self.update_q()
+    
+    def update_lambda_s(self,new_lambda_s):
+        """
+        weight of softned inital constraint
+        """
+        self.lambda_s = new_lambda_s
+        self.update_P()
         self.update_q()
 
     # call when changing y_r, u_r
@@ -333,6 +378,7 @@ class Controller:
         # if this is not checked then you can not initalize y_ini with this function in the beginning
         if len(self.y_ini) == self.T_ini:
             self.update_q()
+            self.update_P()
 
     
     def generateHankel_Collums(self,L,data_sequence):

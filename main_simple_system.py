@@ -51,7 +51,7 @@ class SimpleSystem:
 def main():
     system1 = SimpleSystem(0,0,0.5)
     input = 0.1
-    for i in range(1,50):
+    for i in range(1,200):
         system1.OneTick((random.random()-0.5)*2)
         #system1.OneTick(random.random())
         #system1.OneTick(np.abs(np.sin(i*0.1)))
@@ -61,12 +61,12 @@ def main():
 
     original_data = outputs
 
-    T_ini = 3 # über 3 = schwingen, unter 3 = linearer
-    T_f = 10
+    T_ini = 2 # über 3 = schwingen, unter 3 = linearer
+    T_f = 25
     ctrl = C3.Controller(system1.SystemHistory,T_ini,T_f,1,1)
     SOLLWERT = 25
     ctrl.updateReferenceWaypoint([SOLLWERT])
-    #ctrl.updateReferenceInput([0])
+    #ctrl.updateReferenceInput([0.5])
     ctrl.updateIOConstrains([-1],[1],[0],[0])
     #ctrl.update_lambda_g(500)
     #ctrl.update_lambda_s(1)
@@ -76,11 +76,14 @@ def main():
     system1.resetSystem()
     predictions_y = []
     applied_inputs = []
+    soll = [SOLLWERT]
     for i in range(200):
-        #if i == 22:
+        #if i == 50:
         #    ctrl.updateReferenceWaypoint([20])
+        
         u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
         
+        soll.append(ctrl.y_r[0])
         for i in range(1):
             predictions_y.append(y_star[i][0])
             system_output = system1.OneTick(u_star[i][0])
@@ -97,7 +100,7 @@ def main():
     plt.title(titlesting)
     ax1.set_ylabel("Outputs")
     ax1.plot(original_data,label='Init Data')
-    ax1.plot([SOLLWERT for i in range(len(outputs2))],label='SOLLWERT',c="y")
+    ax1.plot(soll,label='SOLLWERT',c="y")
     ax1.plot(predictions_y,label='predictions',c="r")
     ax1.plot(outputs2,label="system behaviour",c="g")
     plt.legend(loc=8)

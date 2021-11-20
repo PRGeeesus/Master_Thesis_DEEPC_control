@@ -32,6 +32,18 @@ import DeePC_OSQP as DeePC_OSQP
 
 actor_list = [] # store everything that has to be destroyed
 
+def truncateInouts(throttle,steer):
+    ret_throttle = throttle
+    ret_steer = steer
+    if throttle > 1:
+        ret_throttle = throttle
+    if throttle < 0:
+        throttle = 0
+    if steer > 1:
+        ret_steer = 1
+    if steer < -1:
+        steer = -1
+    return ret_throttle,ret_steer
 
 def spawn_car(world,x=0,y=0,**kwargs):
         global actor_list
@@ -109,7 +121,7 @@ def main():
 
         # init the controller
         #controller = DeePCC.Controller(data,5,6,3,3) # data, T_ini, T_f , nr inputs, nr outputs
-        C3 = DeePC_OSQP.Controller(data2,6,6,3,3)
+        C3 = DeePC_OSQP.Controller(data2,3,25,3,3)
         # the reference point is y_r and also drawn in red on the track
         for i in range(12):
             #controller.updateInputOutputMeasures(controller.output_sequence[i],controller.input_sequence[i])
@@ -137,7 +149,9 @@ def main():
         while(1):
             tick = tick + 1
 
-
+            control = temp.get_control()
+            throttle_in = control.throttle
+            steer_in = control.steer
             #start filling y_ini and u_ini             
             if tick > 20:
                 #print("DeePC Controller Taking over:")
@@ -154,34 +168,23 @@ def main():
                 #figure out lateral control
 
                 # apply control
+                throttle_in, steer_in = truncateInouts(u_star[0][0],u_star[0][1])
+
                 temp.apply_control(carla.VehicleControl(
-                                    throttle = u_star[0][0],
-                                    steer = u_star[0][1],
+                                    throttle = throttle_in,
+                                    steer = steer_in,
                                     brake = 0.0,
                                     hand_brake = False,
                                     reverse = False,
                                     manual_gear_shift = False,
                                     gear = 0))
 
-            control = temp.get_control()
             transform = temp.get_transform()
             outputs = [transform.location.x-starting_x,transform.location.y-starting_y,transform.rotation.yaw]
             
-            throttle = 0
-            if control.throttle > 1.0:
-                throttle = 1.0
-            else:
-                throttle = control.throttle
-            steer = 0
-            if control.steer > 180:
-                steer = 180
-            elif control.steer < -180:
-                steer = -180
-            else:
-                steer = control.steer
 
-            inputs = [throttle, steer, control.brake]
-            C3.updateIn_Out_Measures(inputs,outputs,True)
+            inputs = [throttle_in, steer_in, 0.0]
+            C3.updateIn_Out_Measures(inputs,outputs,False)
 
 
             
@@ -207,3 +210,5 @@ def main():
 if __name__ == '__main__':
 
     main()
+
+

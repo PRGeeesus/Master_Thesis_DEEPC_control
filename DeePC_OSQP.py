@@ -182,16 +182,16 @@ class Controller:
     def calculate_bounds_u_l(self):
         # bounds to make it for the description
         #l_y_lb = [self.output_constrains_lb for i in range(self.T_f)]
-        l_y_lb = [[0] for i in range(self.T_f)]
+        l_y_lb = [[0] for i in range(self.T_f*self.output_size)]
 
         #l_u_lb = [self.input_constrains_lb for i in range(self.T_f)]
-        l_u_lb = [[0] for i in range(self.T_f)]
+        l_u_lb = [[0] for i in range(self.T_f*self.input_size)]
 
         #u_y_ub = [self.output_constrains_ub for i in range(self.T_f)]
-        u_y_ub = [[0] for i in range(self.T_f)]
+        u_y_ub = [[0] for i in range(self.T_f*self.output_size)]
 
         #u_u_ub = [self.input_constrains_ub for i in range(self.T_f)]
-        u_u_ub = [[0] for i in range(self.T_f)]
+        u_u_ub = [[0] for i in range(self.T_f*self.input_size)]
         
         
         u_ini_flat = np.reshape(self.u_ini,(self.input_size*self.T_ini,1))

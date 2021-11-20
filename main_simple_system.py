@@ -78,12 +78,11 @@ def main():
     applied_inputs = []
     soll = [SOLLWERT]
     for i in range(1,200):
-        #if i == 50:
-        #    ctrl.updateReferenceWaypoint([20])
-        ctrl.updateReferenceWaypoint([10*np.sin((np.pi*2*(1/200)*i))])
+        
+       
         u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
         
-        soll.append(ctrl.y_r[0])
+        #soll.append(ctrl.y_r[0])
         for i in range(1):
             predictions_y.append(y_star[i][0])
             system_output = system1.OneTick(u_star[i][0])

@@ -40,8 +40,8 @@ class SimpleSystem:
         return temp
 
     def OneTick(self,input):
-        inputt = self.truncateInput(input)
-        #inputt = input
+        #inputt = self.truncateInput(input)
+        inputt = input
         self.u = inputt
         self.y = self.x + self.T * inputt
         self.x = self.y
@@ -50,8 +50,11 @@ class SimpleSystem:
 
 def main():
     system1 = SimpleSystem(0,0,0.5)
-    input = 0.1
+    input = 0.5
     for i in range(1,200):
+        #system1.OneTick(input)
+        #if i == 50:
+        #    input = -0.2
         system1.OneTick((random.random()-0.5)*2)
         #system1.OneTick(random.random())
         #system1.OneTick(np.abs(np.sin(i*0.1)))
@@ -61,34 +64,35 @@ def main():
 
     original_data = outputs
 
-    T_ini = 2 # über 3 = schwingen, unter 3 = linearer
+    T_ini = 3# über 3 = schwingen, unter 3 = linearer
     T_f = 25
     ctrl = C3.Controller(system1.SystemHistory,T_ini,T_f,1,1)
     SOLLWERT = 25
     ctrl.updateReferenceWaypoint([SOLLWERT])
     #ctrl.updateReferenceInput([0.5])
-    ctrl.updateIOConstrains([-1],[1],[0],[0])
-    #ctrl.update_lambda_g(500)
-    #ctrl.update_lambda_s(1)
-    #ctrl.updateControlCost_R([[100]])
-    #ctrl.updateTrackingCost_Q([[100]])
+    ctrl.updateIOConstrains([-1],[1],[-10000],[10000])
+    ctrl.update_lambda_g(0.000001)
+    ctrl.update_lambda_s(100)
+    ctrl.updateControlCost_R([[1]])
+    ctrl.updateTrackingCost_Q([[1]])
     #ctrl.updateReferenceInput([0.5])
     system1.resetSystem()
     predictions_y = []
     applied_inputs = []
     soll = [SOLLWERT]
     for i in range(1,200):
-        
-       
+        #if i == 50:
+        #    ctrl.updateReferenceWaypoint([20])
+        #ctrl.updateReferenceWaypoint([10*np.sin((np.pi*2*(1/100)*i))+10])
         u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
-        
-        #soll.append(ctrl.y_r[0])
-        for i in range(1):
-            predictions_y.append(y_star[i][0])
-            system_output = system1.OneTick(u_star[i][0])
+        soll.append(ctrl.y_r[0])
+        for j in range(1):
+            predictions_y.append(y_star[j][0])
+            system_output = system1.OneTick(u_star[j][0])
             applied_inputs.append(system1.u)
-            print(":",u_star[i][0],system_output,y_star[i][0])
-            ctrl.updateIn_Out_Measures(u_star[i],[system_output])
+            ctrl.updateIn_Out_Measures(u_star[j],[system_output])
+            if i%50 == 0:
+                print(i,": ",u_star[j][0],system_output,y_star[j][0])
     
     outputs2 = system1.SystemHistory[:,1]
     #print("u and y: ", [applied_inputs[i] for i in range(10)],
@@ -98,7 +102,7 @@ def main():
     titlesting = "T_ini:" + str(T_ini) + " T_f:" + str(T_f) +" lg:" + str(ctrl.lambda_g) + " ls:"+ str(ctrl.lambda_s)
     plt.title(titlesting)
     ax1.set_ylabel("Outputs")
-    #ax1.plot(original_data,label='Init Data')
+    ax1.plot(original_data,label='Init Data')
     ax1.plot(soll,label='SOLLWERT',c="y")
     ax1.plot(predictions_y,label='predictions',c="r")
     ax1.plot(outputs2,label="system behaviour",c="g")

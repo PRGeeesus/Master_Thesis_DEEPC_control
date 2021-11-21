@@ -72,7 +72,8 @@ class Controller:
         # this will get updated once the Vehicle starts to produce its own data
         for i in range(self.T_ini):
             #self.updateIn_Out_Measures(self.input_sequence[self.data_length-1 - self.T_ini + i], self.output_sequence[self.data_length-1 - self.T_ini + i])
-            self.updateIn_Out_Measures(self.input_sequence[i], self.output_sequence[i])
+            idx = len(self.input_sequence) - self.T_ini + 1
+            self.updateIn_Out_Measures(self.input_sequence[idx], self.output_sequence[idx])
         
         # these nees y_ini and u_ini to be filled corretly by the above code
         self.P = self.calculate_P()
@@ -169,38 +170,55 @@ class Controller:
 
         y_ZEROS_3_1 = np.zeros((self.output_size*self.T_f,self.input_size*self.T_f))
         y_factor_3_2 = np.eye(self.output_size*self.T_f)*-1.0
+
+        u_boundaries_4_1 = np.eye(self.input_size*self.T_f)
+        u_bouds_zeros_4_2 = np.zeros((self.input_size*self.T_f,self.input_size*self.T_f))
+
+        y_boundaries_5_1 = np.eye(self.output_size*self.T_f)
+        y_bouds_zeros_5_2 = np.zeros((self.output_size*self.T_f,self.output_size*self.T_f))
+
+        data_filler_4_3 = np.zeros((self.input_size*self.T_f,(self.data_length - self.L)))
+        data_filler_5_3 = np.zeros((self.output_size*self.T_f,(self.data_length - self.L)))
+
         #print(np.shape(u_ZEROS_1_1),np.shape(y_ZEROS_1_2),np.shape(self.U_p))
         #print(np.shape(u_factor_2_1),np.shape(u_ZEROS_2_2),np.shape(self.U_f))
         #print(np.shape(y_ZEROS_3_1),np.shape(y_factor_3_2),np.shape(self.Y_f))
 
         A = np.block([[u_ZEROS_1_1,y_ZEROS_1_2,self.U_p],
-                     [u_factor_2_1,u_ZEROS_2_2,self.U_f],
-                     [y_ZEROS_3_1,y_factor_3_2,self.Y_f]])
+                      [u_factor_2_1,u_ZEROS_2_2,self.U_f],
+                      [y_ZEROS_3_1,y_factor_3_2,self.Y_f],
+                      [u_boundaries_4_1,u_bouds_zeros_4_2,data_filler_4_3],
+                      [y_boundaries_5_1,y_bouds_zeros_5_2,data_filler_5_3]])
         A = sparse.csc_matrix(A)
         return A
 
     def calculate_bounds_u_l(self):
         # bounds to make it for the description
-        #l_y_lb = [self.output_constrains_lb for i in range(self.T_f)]
-        l_y_lb = [[0] for i in range(self.T_f*self.output_size)]
 
-        #l_u_lb = [self.input_constrains_lb for i in range(self.T_f)]
-        l_u_lb = [[0] for i in range(self.T_f*self.input_size)]
+        y_zeros = [[0] for i in range(self.T_f)]
 
-        #u_y_ub = [self.output_constrains_ub for i in range(self.T_f)]
-        u_y_ub = [[0] for i in range(self.T_f*self.output_size)]
+        u_zeros = [[0] for i in range(self.T_f)]
 
-        #u_u_ub = [self.input_constrains_ub for i in range(self.T_f)]
-        u_u_ub = [[0] for i in range(self.T_f*self.input_size)]
+        lb_u = [self.input_constrains_lb for i in range(self.T_f)]
+        lb_y = [self.output_constrains_lb for i in range(self.T_f)]
+
+        ub_u = [self.input_constrains_ub for i in range(self.T_f)]
+        ub_y = [self.output_constrains_ub for i in range(self.T_f)]
         
         
         u_ini_flat = np.reshape(self.u_ini,(self.input_size*self.T_ini,1))
         #u_ini_flat = [[0] for i in range(self.input_size*self.T_ini)]
-        lb = np.vstack((l_u_lb,l_y_lb))
+        lb = np.vstack((lb_u,lb_y))
+        lb = np.vstack((y_zeros,lb))
+        lb = np.vstack((u_zeros,lb))
         lb = np.vstack((u_ini_flat,lb))
 
-        ub = np.vstack((u_u_ub,u_y_ub))
+        ub = np.vstack((ub_u,ub_y))
+        ub = np.vstack((y_zeros,ub))
+        ub = np.vstack((u_zeros,ub))
         ub = np.vstack((u_ini_flat,ub))
+
+        
 
         #print("lb: ",np.shape(lb),lb)
         #print("ub: ",np.shape(ub),ub)
@@ -275,7 +293,7 @@ class Controller:
         """
         
         prob = osqp.OSQP()
-        prob.setup(self.P, self.q, self.A, l = self.lb, u = self.ub, eps_rel  = 0.1,adaptive_rho = False, polish = False,alpha=1,max_iter= 10000,verbose = False)
+        prob.setup(self.P, self.q, self.A, l = self.lb, u = self.ub, eps_rel  = 0.0001,adaptive_rho = False, polish = False,alpha=1,max_iter= 10000,verbose = False)
         res = prob.solve()
         return res.x
         
@@ -318,7 +336,7 @@ class Controller:
         if np.shape(new_Q) != np.shape(new_Q):
             print("Wrong dimension for updatad Control Cost")
         else:
-            self.R = new_Q
+            self.Q = new_Q
             self.update_P()
             self.update_q()
     

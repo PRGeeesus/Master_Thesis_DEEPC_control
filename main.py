@@ -118,15 +118,10 @@ def main():
         #data2 = cHelper.readFromCSV("manual_recording")
         data2 = data2[:350]
         #data = [[i,i,i,-i,-i,-i] for i in range(30)] # [output, output, output, input,input,input] -> for debugging
-
         # init the controller
         #controller = DeePCC.Controller(data,5,6,3,3) # data, T_ini, T_f , nr inputs, nr outputs
         C3 = DeePC_OSQP.Controller(data2,3,25,3,3)
-        # the reference point is y_r and also drawn in red on the track
-        for i in range(12):
-            #controller.updateInputOutputMeasures(controller.output_sequence[i],controller.input_sequence[i])
-            C3.updateIn_Out_Measures(C3.input_sequence[i], C3.output_sequence[i])
-
+        C3.updateIOConstrains([0,-1,0],[1,1,1],[-1000,-1000,-180],[1000,1000,180])
 
         temp,starting_transform = cHelper.spawn_car(actor_list,world,10,-60)
 
@@ -168,7 +163,9 @@ def main():
                 #figure out lateral control
 
                 # apply control
-                throttle_in, steer_in = truncateInouts(u_star[0][0],u_star[0][1])
+                #throttle_in, steer_in = truncateInouts(u_star[0][0],u_star[0][1])
+                throttle_in = u_star[0][0]
+                steer_in = u_star[0][1]
 
                 temp.apply_control(carla.VehicleControl(
                                     throttle = throttle_in,

@@ -91,16 +91,16 @@ def main():
         tm_port = tm.get_port()
         client.set_timeout(3.0)
         world = client.get_world()
-
         settings = world.get_settings()
         settings.no_rendering_mode = False
         #settings.no_rendering_mode = True # Enable this to not Render
         world.apply_settings(settings)
         starttick = world.tick()
 
-        starting_x = -80
-        starting_y = -60
+        starting_x = 5
+        starting_y = 30
         temp,starting_transform = cHelper.spawn_car(actor_list,world,starting_x,starting_y)
+        tm.ignore_lights_percentage(temp,100) # use this only when record data. It makes the car ignore all red lights
         for v in actor_list:
             v.set_autopilot(True,tm_port)
         
@@ -109,7 +109,7 @@ def main():
 
         #cHelper.drawWaypoints(data,world,[10,0,255],0.0)
         time.sleep(3)     
-        cHelper.recordData(client,world,temp,40,400)
+        cHelper.recordData(client,world,temp,"sample_waypoints_3",40,400)
 
     except KeyboardInterrupt:
         print("Simulation terminated by Hand")

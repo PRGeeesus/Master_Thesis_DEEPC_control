@@ -19,7 +19,7 @@ def checkingAllActorsAlive(actor_list,world):
             print("Actor", a.id , " not alive!")
 
 # use to manage actor lifecycle
-def spawn_car(actor_list,world,x=0,y=0,**kwargs):
+def spawn_car(world,x=0,y=0,**kwargs):
         cars = []
         blueprint_library = world.get_blueprint_library()
         bp = random.choice(blueprint_library.filter('vehicle.Tesla.model3'))
@@ -30,16 +30,14 @@ def spawn_car(actor_list,world,x=0,y=0,**kwargs):
             transform = world.get_map().get_spawn_points()[0]
             transform.location.y += y
             transform.location.x += x
-            transform.location.z += 1
-
+            transform.location.z += 1.0
         vehicle = world.try_spawn_actor(bp, transform)
         if vehicle is not None:
             print("spawning ",vehicle.type_id," ",vehicle.id," at: ", transform.location)
 
-            actor_list.append(vehicle)
             return vehicle,transform
         else:
-            print("Returning none, nothing appended, no car spawnes")
+            print("Returning none, nothing appended, no car spawnes. Check if you deleted the previous Car")
             return None
 
 def saveAsCSV(filename,data):
@@ -65,13 +63,13 @@ def readFromCSV(filename):
         return temp
 
 #draw waypoints as rectangles on the map
-def drawWaypoints(waypoints_file,world,colour,life_time):
+def drawWaypoints(waypoints_file,world,colour,life_time,xyoffset = [0.0,0.0]):
     #waypoints = readFromCSV(waypoints_file)
 
     #print(waypoints)
     debug = world.debug
     for point in waypoints_file:
-        debug.draw_box(carla.BoundingBox(carla.Location(point[0],point[1],3),carla.Vector3D(0.3,0.3,0.3)), carla.Rotation(0,0,0),0.05, carla.Color(colour[0],colour[1],colour[2],0),life_time)
+        debug.draw_box(carla.BoundingBox(carla.Location(point[0] + xyoffset[0],point[1]+xyoffset[1],3),carla.Vector3D(0.3,0.3,0.3)), carla.Rotation(0,0,0),0.05, carla.Color(colour[0],colour[1],colour[2],0),life_time)
 
 def generateTestData(name,dataset_lengt = 350,datapoint_length = 6):
     #TestData = [[0.1,0.2,0.3,0.4,0.5,0.6]]
@@ -86,7 +84,7 @@ def deductStartingPositionFromData(data,x_offset,y_offset):
         data[0] = data[0]-x_offset
         data[1] = data[1]-y_offset
 
-def recordData(client,world,car,sample_interval_ms = 40,nr_samples = None):
+def recordData(client,world,car,name = "sample_waypoints",sample_interval_ms = 40,nr_samples = None):
     """
     recors data in the way:
     [throttle,steer,brake,car-x,car-y,car-yaw]
@@ -97,8 +95,9 @@ def recordData(client,world,car,sample_interval_ms = 40,nr_samples = None):
     nr_datapoints = 0
     sample_interval_ns = sample_interval_ms*1000*1000
     running = True
+    time.sleep(2)
+    print("Begin Recording:")
     starting_pos = car.get_transform()
-
     starting_x = starting_pos.location.x
     starting_y = starting_pos.location.y
     prev_timestamp = 0
@@ -128,9 +127,9 @@ def recordData(client,world,car,sample_interval_ms = 40,nr_samples = None):
                 running = False
         
         sample_waypoints.pop(0)
-        saveAsCSV("sample_waypoints_2",sample_waypoints)
+        saveAsCSV(name,sample_waypoints)
 
     except KeyboardInterrupt:
         sample_waypoints.pop(0)
-        saveAsCSV("sample_waypoints_2",sample_waypoints)
+        saveAsCSV(name,sample_waypoints)
         return

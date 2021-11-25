@@ -25,12 +25,11 @@ class Controller:
         self.u_r = np.array([0.0 for i in range(self.input_size)]) # steady state reference inout is no throttle, steer or brake
         self.y_r = np.array([0.0 for i in range(self.output_size)]) # steady state reference output should probably be the reference waypoint I want to reach ?
 
-        #self.Q = np.matrix([[40,0,0],[0,40,0],[0,0,40]]) #tracking error cost Martix taken from paper
         
-        self.Q = np.eye(self.output_size)
-        #self.Q = np.asarray([[1,0,0],[0,1,0],[0,0,1]])
-        self.R = np.eye(self.input_size)
-        #self.R = np.asarray([[1,0,0],[0,1,0],[0,0,1]]) # quardatic control effort cost
+        self.Q = np.eye(self.output_size) #quadratic tracking error cost matrix
+        
+        self.R = np.eye(self.input_size) # quadratic control effort cost matrix,
+
         
         #to be updated as the controller runs:
 
@@ -80,10 +79,10 @@ class Controller:
         self.q = self.calculate_q()
         self.A = self.calculate_A()
 
-        self.output_constrains_lb = [0.0 for i in range(self.output_size)]
-        self.output_constrains_ub = [0.0 for i in range(self.output_size)]
-        self.input_constrains_lb  = [0.0 for i in range(self.input_size)]
-        self.input_constrains_ub = [0.0 for i in range(self.input_size)]
+        self.output_constrains_lb = np.array([0.0 for i in range(self.output_size)])
+        self.output_constrains_ub = np.array([0.0 for i in range(self.output_size)])
+        self.input_constrains_lb  = np.array([0.0 for i in range(self.input_size)])
+        self.input_constrains_ub = np.array([0.0 for i in range(self.input_size)])
         
         self.calculate_bounds_u_l()
 
@@ -108,8 +107,8 @@ class Controller:
         [0] [R] [0] \n
         [0] [0] [l_s * Y_p*Y_p + l_g * I]\n
         """
-        P_u = np.kron(np.eye(self.T_f), self.Q) # (15, 15)
-        P_y = np.kron(np.eye(self.T_f), self.R) # (15, 15)
+        P_u = np.kron(np.eye(self.T_f), self.R) # (15, 15)
+        P_y = np.kron(np.eye(self.T_f), self.Q) # (15, 15)
         P_g = self.lambda_s * np.matmul(self.Y_p.T,self.Y_p) + np.eye(self.g_len)*self.lambda_g # (43, 43)
         #print("P_u shape :",np.shape(P_u))
         #print("P_y shape :",np.shape(P_y))
@@ -120,8 +119,8 @@ class Controller:
         zeros_15_43 = np.zeros((self.T_f*self.output_size,self.data_length-self.L))
         zeros_43_15 = np.zeros((self.data_length-self.L, self.T_f*self.output_size))
         P = np.block([[P_u,zeros_15_15,zeros_15_43],
-                 [zeros_15_15,P_y,zeros_15_43],
-                 [zeros_43_15,zeros_43_15,P_g]])
+                      [zeros_15_15,P_y,zeros_15_43],
+                      [zeros_43_15,zeros_43_15,P_g]])
         P = sparse.csc_matrix(2*P)
         return P
 
@@ -195,19 +194,36 @@ class Controller:
     def calculate_bounds_u_l(self):
         # bounds to make it for the description
 
-        y_zeros = [[0] for i in range(self.T_f)]
+        y_zeros = [[0] for i in range(self.T_f*self.output_size)]
 
-        u_zeros = [[0] for i in range(self.T_f)]
+        u_zeros = [[0] for i in range(self.T_f*self.input_size)]
 
-        lb_u = [self.input_constrains_lb for i in range(self.T_f)]
-        lb_y = [self.output_constrains_lb for i in range(self.T_f)]
-
-        ub_u = [self.input_constrains_ub for i in range(self.T_f)]
-        ub_y = [self.output_constrains_ub for i in range(self.T_f)]
+        lb_u_temp = np.reshape(self.input_constrains_lb,(len(self.input_constrains_lb),1))
+        lb_y_temp = np.reshape(self.output_constrains_lb,(len(self.output_constrains_lb),1))
+        lb_u = lb_u_temp
+        for i in range(self.T_f-1):
+            lb_u = np.vstack((lb_u_temp,lb_u))
+        lb_y = lb_y_temp
+        for i in range(self.T_f-1):
+            lb_y = np.vstack((lb_y_temp,lb_y))
         
+        ub_u_temp = np.reshape(self.input_constrains_ub,(len(self.input_constrains_ub),1))
+        ub_y_temp = np.reshape(self.output_constrains_ub,(len(self.output_constrains_ub),1))
+        ub_u = ub_u_temp
+        for i in range(self.T_f-1):
+            ub_u = np.vstack((ub_u_temp,ub_u))
+        ub_y = ub_y_temp
+        for i in range(self.T_f-1):
+            ub_y = np.vstack((ub_y_temp,ub_y))
+
+        #lb_y = lb_y.flatten()
+        #lb_u = lb_u.flatten()
+        #print(np.shape(ub_y),np.shape(ub_u))
+        #ub_y = ub_y.flatten()
+        #ub_u = ub_u.flatten()
+        #print(np.shape(ub_y),np.shape(ub_u))
         
         u_ini_flat = np.reshape(self.u_ini,(self.input_size*self.T_ini,1))
-        #u_ini_flat = [[0] for i in range(self.input_size*self.T_ini)]
         lb = np.vstack((lb_u,lb_y))
         lb = np.vstack((y_zeros,lb))
         lb = np.vstack((u_zeros,lb))
@@ -228,7 +244,7 @@ class Controller:
         
     # TODO: adapt
     def getInputOutputPrediction(self,verbose = False):
-        x0_result = self.solve_for_x_regularized()
+        x0_result = self.solve_for_x_regularized(verbose_l=verbose)
         g = x0_result[self.T_f*self.input_size + self.T_f*self.output_size : ]
         u = x0_result[:self.T_f*self.input_size]
         u_star = np.reshape(np.matmul(self.U_f,g),(self.T_f,self.input_size))
@@ -242,7 +258,7 @@ class Controller:
         y_star = np.reshape(y_star, (self.T_f,self.output_size))
 
         if verbose:
-            self.test_erg(x0_result)
+            #self.test_erg(x0_result)
             print("u_star: ",u_star[0],"y_star: ",y_star[0])
 
         return u,y,u_star,y_star,g
@@ -271,42 +287,23 @@ class Controller:
 
         return first_term + second_term
 
-    def solve_for_x_regularized(self):
-        """
-        x0 = [0.01 for i in range(self.T_f*self.input_size + self.T_f*self.output_size + (self.data_length-self.L))]
-        #print(np.shape(self.lb.flatten()),np.shape(self.ub))
-        constr = opt.LinearConstraint(self.A.toarray(), self.lb.flatten(), self.ub.flatten())
-        bnd = [(self.input_constrains_lb[0],self.input_constrains_ub[0])]
-        cons = ({'type': 'ineq', 'fun': lambda x:  np.matmul(self.A.toarray(),x) + self.lb.flatten()},
-                {'type': 'ineq', 'fun': lambda x:  np.matmul(-self.A.toarray(),x) + self.ub.flatten()})
-        #print(bnd)
-        for i in range(1,self.T_f):
-            bnd.append((self.input_constrains_lb[0],self.input_constrains_ub[0]))
-        for i in range(self.T_f):
-            bnd.append((self.output_constrains_lb[0],self.output_constrains_ub[0]))
-        for i in range(self.data_length-self.L):
-            bnd.append((None,None)) 
-        
-        erg = opt.minimize(self.minFunction,x0,method = "SLSQP",constraints = cons,bounds = bnd)
-        #print(erg)
-        return erg.x
-        """
+    def solve_for_x_regularized(self,verbose_l = False):
         
         prob = osqp.OSQP()
-        prob.setup(self.P, self.q, self.A, l = self.lb, u = self.ub, eps_rel  = 0.0001,adaptive_rho = False, polish = False,alpha=1,max_iter= 10000,verbose = False)
+        prob.setup(self.P, self.q, self.A, l = self.lb, u = self.ub, warm_start = False,eps_rel  = 0.1,adaptive_rho = False, polish = False,alpha=1,max_iter= 10000,verbose = verbose_l)
         res = prob.solve()
         return res.x
         
 
     def updateIOConstrains(self,input_lb,input_ub,output_lb,output_ub):
         if len(self.input_constrains_lb) == len(input_lb):
-            self.input_constrains_lb = input_lb
+            self.input_constrains_lb = np.array(input_lb)
         if len(self.input_constrains_ub) == len(input_ub):
-            self.input_constrains_ub = input_ub
+            self.input_constrains_ub = np.array(input_ub)
         if len(self.output_constrains_lb) == len(output_lb):
-            self.output_constrains_lb = output_lb
+            self.output_constrains_lb = np.array(output_lb)
         if len(self.output_constrains_ub) == len(output_ub):
-            self.output_constrains_ub = output_ub
+            self.output_constrains_ub = np.array(output_ub)
         
         self.calculate_bounds_u_l()
 
@@ -383,7 +380,11 @@ class Controller:
             print("Trying to update with wrong array sizes")
         
         if verbose == True:
-            print("Updating in: ",new_input_measure," out: ",new_output_measures)
+            inp = [round(i,2) for i in new_input_measure]
+            inp = [round(i,2) for i in new_input_measure]
+            outp = [round(i,2) for i in new_output_measures]
+
+            print("Updating in: ",inp," out: ",outp)
 
         self.u_ini = np.vstack((self.u_ini,new_input_measure))
         self.y_ini = np.vstack((self.y_ini,new_output_measures))

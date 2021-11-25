@@ -64,14 +64,14 @@ def main():
 
     original_data = outputs
 
-    T_ini = 3# über 3 = schwingen, unter 3 = linearer
+    T_ini = 6# über 3 = schwingen, unter 3 = linearer
     T_f = 25
     ctrl = C3.Controller(system1.SystemHistory,T_ini,T_f,1,1)
     SOLLWERT = 25
     ctrl.updateReferenceWaypoint([SOLLWERT])
     #ctrl.updateReferenceInput([0.5])
-    ctrl.updateIOConstrains([-1],[1],[-10000],[10000])
-    ctrl.update_lambda_g(0.000001)
+    ctrl.updateIOConstrains([-1],[1],[-1],[1])
+    ctrl.update_lambda_g(0.0000001)
     ctrl.update_lambda_s(100)
     ctrl.updateControlCost_R([[1]])
     ctrl.updateTrackingCost_Q([[1]])
@@ -82,9 +82,9 @@ def main():
     soll = [SOLLWERT]
     for i in range(1,200):
         #if i == 50:
-        #    ctrl.updateReferenceWaypoint([20])
-        #ctrl.updateReferenceWaypoint([10*np.sin((np.pi*2*(1/100)*i))+10])
-        u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
+        #    ctrl.updateReferenceWaypoint([15])
+        ctrl.updateReferenceWaypoint([10*np.sin((np.pi*2*(1/200)*i))+10])
+        u,y,u_star,y_star,g = ctrl.getInputOutputPrediction(verbose = False)
         soll.append(ctrl.y_r[0])
         for j in range(1):
             predictions_y.append(y_star[j][0])

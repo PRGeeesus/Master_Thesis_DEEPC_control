@@ -27,10 +27,10 @@ class Controller:
 
         #self.Q = np.matrix([[40,0,0],[0,40,0],[0,0,40]]) #tracking error cost Martix taken from paper
         
-        self.Q = np.eye(self.output_size)
+        self.Q = np.eye(self.output_size) # quardatic tracking effort cost
         #self.Q = np.asarray([[1,0,0],[0,1,0],[0,0,1]])
-        self.R = np.eye(self.input_size)
-        #self.R = np.asarray([[1,0,0],[0,1,0],[0,0,1]]) # quardatic control effort cost
+        self.R = np.eye(self.input_size) #quardatic control effort cost
+        #self.R = np.asarray([[1,0,0],[0,1,0],[0,0,1]])
         
         #to be updated as the controller runs:
 
@@ -108,20 +108,25 @@ class Controller:
         [0] [R] [0] \n
         [0] [0] [l_s * Y_p*Y_p + l_g * I]\n
         """
-        P_u = np.kron(np.eye(self.T_f), self.Q) # (15, 15)
-        P_y = np.kron(np.eye(self.T_f), self.R) # (15, 15)
+        P_u = np.kron(np.eye(self.T_f), self.R) # (15, 15)
+        P_y = np.kron(np.eye(self.T_f), self.Q) # (15, 15)
         P_g = self.lambda_s * np.matmul(self.Y_p.T,self.Y_p) + np.eye(self.g_len)*self.lambda_g # (43, 43)
         #print("P_u shape :",np.shape(P_u))
         #print("P_y shape :",np.shape(P_y))
         #print("P_g shape :",np.shape(P_g),P_g)
         #print("x0 shape :",np.shape(x0))
 
-        zeros_15_15 = np.zeros((self.T_f*self.output_size, self.T_f*self.output_size))
-        zeros_15_43 = np.zeros((self.T_f*self.output_size,self.data_length-self.L))
-        zeros_43_15 = np.zeros((self.data_length-self.L, self.T_f*self.output_size))
-        P = np.block([[P_u,zeros_15_15,zeros_15_43],
-                 [zeros_15_15,P_y,zeros_15_43],
-                 [zeros_43_15,zeros_43_15,P_g]])
+        zeros_1_2 = np.zeros((self.T_f*self.input_size, self.T_f*self.output_size))
+        zeros_1_3 = np.zeros((self.T_f*self.input_size, self.data_length-self.L))
+
+        zeros_2_1 = np.zeros((self.T_f*self.output_size, self.T_f*self.input_size))
+        zeros_2_3 = np.zeros((self.T_f*self.output_size,self.data_length-self.L))
+
+        zeros_3_1 = np.zeros((self.data_length-self.L, self.T_f*self.input_size))
+        zeros_3_2 = np.zeros((self.data_length-self.L, self.T_f*self.output_size))
+        P = np.block([[P_u,zeros_1_2,zeros_1_3],
+                 [zeros_2_1,P_y,zeros_2_3],
+                 [zeros_3_1,zeros_3_2,P_g]])
         P = sparse.csc_matrix(2*P)
         return P
 
@@ -163,7 +168,7 @@ class Controller:
 
     def calculate_A(self):
         u_ZEROS_1_1 = np.zeros((self.input_size*self.T_ini,self.input_size*self.T_f))
-        y_ZEROS_1_2 = np.zeros((self.output_size*self.T_ini,self.output_size*self.T_f))
+        y_ZEROS_1_2 = np.zeros((self.input_size*self.T_ini,self.output_size*self.T_f))
 
         u_factor_2_1 = np.eye(self.input_size*self.T_f)*-1.0
         u_ZEROS_2_2 = np.zeros((self.input_size*self.T_f,self.output_size*self.T_f))
@@ -368,9 +373,9 @@ class Controller:
         temp = []
         ur_tmep = np.array(self.u_r).T
         T_ini_ur = np.kron(np.ones((self.T_ini,1)), ur_tmep)
-        T_ini_yr = np.kron(np.ones((self.T_ini,1)), self.y_r)
-        T_f_ur = np.kron(np.ones((self.T_f,1)), self.u_r)
-        T_f_yr = np.kron(np.ones((self.T_f,1)), self.y_r)
+        T_ini_yr = np.kron(np.ones((self.T_ini,1)), np.reshape(self.y_r,(self.output_size,1)))
+        T_f_ur = np.kron(np.ones((self.T_f,1)), np.reshape(self.u_r,(self.input_size,1)))
+        T_f_yr = np.kron(np.ones((self.T_f,1)), np.reshape(self.y_r,(self.output_size,1)))
         temp = np.vstack((T_f_ur,T_f_yr))
         temp = np.vstack((T_ini_yr,temp))
         temp = np.vstack((T_ini_ur,temp))

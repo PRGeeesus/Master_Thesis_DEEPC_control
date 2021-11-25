@@ -10,46 +10,11 @@ import matplotlib.pyplot as plt
 import random
 import DeePC_OSQP as C3
 import numpy as np
-
-class SimpleSystem:
-    def __init__(self,x_0,y_0,gain):
-        self.x0 = x_0
-        self.y0 = y_0
-        self.T = gain
-        self.x = self.x0
-        self.y = self.y0
-        self.u = 0
-        self.SystemHistory = np.array([[self.y0,self.x0]])
-    
-    def resetSystem(self):
-        self.x = self.x0
-        self.y = self.y0
-        self.clearHistory()
-
-    def clearHistory(self):
-        self.SystemHistory = np.array([[self.y0,self.x0]])
-
-    def truncateInput(self,inp):
-        temp = 0
-        if inp < -1:
-            temp = -1
-        if inp > 1:
-            temp = 1
-        if inp > -1 and inp < 1:
-            temp = inp
-        return temp
-
-    def OneTick(self,input):
-        #inputt = self.truncateInput(input)
-        inputt = input
-        self.u = inputt
-        self.y = self.x + self.T * inputt
-        self.x = self.y
-        self.SystemHistory = np.vstack((self.SystemHistory,[inputt,self.y]))
-        return self.y
+from SimpleSystems import SimpleSystem1
+import time
 
 def main():
-    system1 = SimpleSystem(0,0,0.5)
+    system1 = SimpleSystem1(0,0,0.5)
     input = 0.5
     for i in range(1,200):
         #system1.OneTick(input)
@@ -158,10 +123,51 @@ def main2():
     plt.legend(loc=4)
     plt.show()
 
+import control
+
+syst = control.tf(1,[0.25,0.25,1])
 
 
-main()
+def main3():
+    #response = control.impulse_response(syst)
+    times = []
+    inputs = []
+    for i in range(200):
+        times.append(i*0.12)
+        #if i > 100:    
+        #    inputs.append(4)
+        #else:
+        #    inputs.append(0.1)
+        inputs.append(random.randint(0,5))
+
+    #response = control.forced_response(syst,times,inputs)
+    time_2 = []
+    outputs_2 = []
+    inputs_2 = []
+    input = 4
+    dt = 0.1
+    prev_input = 0
+    T, yout_, x_out = control.initial_response(syst,[0,dt],return_x = True)
+    print(T,yout_,x_out)
+    time_2.append(T)
+    outputs_2.append(yout_[0])
+    inputs_2.append(input)
+    
+    for i in range(200):
+        T, yout_, x_out = control.forced_response(syst,[0,dt],[prev_input,input],x_out[1],return_x = True)
+        print(yout_)
+        time_2.append(T)
+        outputs_2.append(yout_[1])
+        inputs_2.append(input)
+        prev_input = input
+    print(outputs_2)
+    plt.plot(outputs_2,c = "r")
+    #plt.plot(inputs_2,time_2,c="b")
+    plt.show()
+
+#main()
 #main2()
+main3()
 
 
 

@@ -10,14 +10,20 @@ import matplotlib.pyplot as plt
 import random
 import DeePC_OSQP as C3
 import numpy as np
+<<<<<<< Updated upstream
 from SimpleSystems import CessnaSystem, ChessnaMPCController, InvertedPendulimSS, SimpleSystem1,SecondOrderSystem
+=======
+from SimpleSystems import SimpleSystem1,SimpleSystem2
+>>>>>>> Stashed changes
 import time
+#import control
+
 
 def main():
-    system1 = SimpleSystem1(0,0,0.5)
+    system1 = SimpleSystem2(0,0,0.5)
     input = 0.5
-    for i in range(1,200):
-        #system1.OneTick(input)
+    for i in range(1,100):
+        system1.OneTick(input)
         #if i == 50:
         #    input = -0.2
         system1.OneTick((random.random()-0.5)*2)
@@ -35,9 +41,9 @@ def main():
     SOLLWERT = 25
     ctrl.updateReferenceWaypoint([SOLLWERT])
     #ctrl.updateReferenceInput([0.5])
-    ctrl.updateIOConstrains([-1],[1],[-1],[1])
-    ctrl.update_lambda_g(0.0000001)
-    ctrl.update_lambda_s(100)
+    ctrl.updateIOConstrains([-1],[1],[-100],[100])
+    ctrl.update_lambda_g(5)
+    ctrl.update_lambda_s(0.5)
     ctrl.updateControlCost_R([[1]])
     ctrl.updateTrackingCost_Q([[1]])
     #ctrl.updateReferenceInput([0.5])
@@ -46,9 +52,11 @@ def main():
     applied_inputs = []
     soll = [SOLLWERT]
     for i in range(1,200):
-        #if i == 50:
-        #    ctrl.updateReferenceWaypoint([15])
-        ctrl.updateReferenceWaypoint([10*np.sin((np.pi*2*(1/200)*i))+10])
+        if i == 50:
+            ctrl.updateReferenceWaypoint([15])
+        if i == 150:
+            ctrl.updateReferenceWaypoint([25])
+        #ctrl.updateReferenceWaypoint([10*np.sin((np.pi*2*(1/200)*i))+10])
         u,y,u_star,y_star,g = ctrl.getInputOutputPrediction(verbose = False)
         soll.append(ctrl.y_r[0])
         for j in range(1):
@@ -124,6 +132,7 @@ def main2():
     plt.legend(loc=4)
     plt.show()
 
+<<<<<<< Updated upstream
 def main3():
     sys = SecondOrderSystem(250,100)
     outputs = []
@@ -147,6 +156,10 @@ def main3():
 
     #plt.legend(loc=4)
     plt.show()
+=======
+
+#syst = control.tf(1,[0.25,0.25,1])
+>>>>>>> Stashed changes
 
 def main4():
 
@@ -268,6 +281,7 @@ def main4():
     plt.legend(loc=4)
     plt.show()
 
+<<<<<<< Updated upstream
 import control
 def main5():
     system = InvertedPendulimSS()
@@ -300,6 +314,11 @@ main4()
 #main()
 #main2()
 
+=======
+main()
+#main2()
+#main3()
+>>>>>>> Stashed changes
 
 
 

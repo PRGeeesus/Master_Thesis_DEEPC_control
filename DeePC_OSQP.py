@@ -56,8 +56,8 @@ class Controller:
         self.recalculate_g_r()
 
 
-        self.lambda_s = 1 #weight of softned inital constraint
-        self.lambda_g = 1 #weight on regularization of g
+        self.lambda_s = 1 #weight of softned inital constraint = 0.000000075
+        self.lambda_g = 1 #weight on regularization of g = 500
 
         # all the initalization for the SOlver:
         init_value = 0.5   

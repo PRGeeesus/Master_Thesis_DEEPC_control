@@ -1,3 +1,4 @@
+import time
 import numpy as np
 
 class SimpleSystem1:
@@ -306,39 +307,41 @@ from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 
 class FederMasseSystem:
-    def __init__(self) -> None:
+    def __init__(self,timestep) -> None:
         # Parameters defining the system
+        self.timestep = timestep
         c = 4 # Damping constant
         k = 2 # Stiffness of the spring
         m = 20 # Mass
         F = 5 # Force
         # Simulation Parameters
-        tstart = 0
-        tstop = 60
-        increment = 0.1
-        t = np.arange(tstart,tstop+1,increment)
         # System matrices
-        A = [[0, 1], [-k/m, -c/m]]
-        B = [[0], [1/m]]
-        C = [[1, 0]]
-        sys = control.ss(A, B, C, 0)
-        t, y, x = control.forced_response(sys, t, F,return_x=True)
-        # Step response for the system
-        y_list = np.array([])
-        x_list =[]
-        for i in range(1):
-            t, y, x = control.forced_response(sys, t, F,[x[0][-1],x[1][-1]],return_x=True)
-            #print("y",np.shape(y),y,type(y))
-            y_list = np.hstack((y,y_list))
-            #y_list.append(np.array(y).flatten())
-            #x_list.append(x,y)
-        np.flipud(y_list)
-        plt.plot( y_list)
-        plt.title('Simulation of Mass-Spring-Damper System')
-        plt.xlabel('t')
-        plt.ylabel('x(t)')
-        plt.grid()
-        plt.show()
+        A = np.array([[0, 1], [-k/m, -c/m]])
+        B = np.array([[0], [1/m]])
+        C = np.array([[1, 0]])
+        self.A = np.eye(2) + A*self.timestep
+        self.B = B*self.timestep
+        self.C = C
+        self.x0 = np.array([0.,0.])
+
+        self.out_pos = [self.x0[0]]
+        self.out_vel = [self.x0[1]]
+        self.in_force = [0]
+
+    def resetSystem(self):
+        self.x0 = np.array([0.,0.])
+        self.out_pos = [self.x0[0]]
+        self.out_vel = [self.x0[1]]
+        self.in_force = [0]
+
+    def OneTick(self,input_force):
+        u = np.array([input_force])
+        self.x0 = np.matmul(self.A,self.x0) + np.matmul(self.B,u)
+        self.out_pos.append(self.x0[0])
+        self.out_vel.append(self.x0[1])
+        self.in_force.append(input_force)
+        y = np.matmul(self.C,self.x0)
+        return y
 
 
 class QuadCopter():
@@ -449,29 +452,35 @@ class QuadCopter():
             prob.update(l=l, u=u)
 
 class Chessna2():
-    def __init__(self,TIMESTEP):
+    def __init__(self,TIMESTEP,time_horizon_s):
     
         self.TIMESTEP = TIMESTEP
+        self.HORIZON_N_SEC = time_horizon_s
 
         self.Ad = sparse.csc_matrix([
             [-1.2822, 0 ,0.98, 0 ],
             [0, 0, 1, 0],
             [-5.4293, 0, -1.8366, 0 ],
-            [128.2, 128.2, 0, 0]])*self.TIMESTEP
+            [128.2, 128.2, 0, 0]])
+
+
         
         self.Bd = sparse.csc_matrix([
             [-0.3],
             [0],
             [   -17],
             [0,]])*self.TIMESTEP
-        self.Cd = sparse.csc_matrix([[0, 1 ,0, 0 ],
+        
+        self.factor_deg_to_rad = (np.pi/180)
+        self.factor_rad_to_deg = (180/np.pi)
+        self.Cd = sparse.csc_matrix([[0, 1*self.factor_rad_to_deg ,0, 0 ],
                                     [0, 0, 0, 1],])
         [nx, nu] = self.Bd.shape
         self.nx = nx
         self.nu = nu
-        #self.Ad =  self.Ad*self.TIMESTEP + sparse.eye(nx)
+        self.Ad =  self.Ad*self.TIMESTEP + sparse.eye(nx)
         # Prediction horizon
-        N = 10
+        N = self.HORIZON_N_SEC
         self.N = N
 
         # Constraints
@@ -479,7 +488,7 @@ class Chessna2():
         u0 = 0
         umin = np.array([-0.262])
         umax = np.array([0.262])
-        xmin = np.array([-np.inf,-0.349,-np.inf, 0.0])
+        xmin = np.array([-np.inf,-0.349,-np.inf, 100.0])
         xmax = np.array([np.inf, 0.349,  np.inf, np.inf])
 
         deltau_min = np.array([-0.524])*self.TIMESTEP
@@ -487,7 +496,7 @@ class Chessna2():
 
         # Objective function
         Q = sparse.diags([1., 1., 1., 1.])
-        QN = Q
+        QN = Q*10
         R = sparse.diags([1.])
 
         # Initial and reference states
@@ -535,7 +544,7 @@ class Chessna2():
         # Create an OSQP object
         self.prob = osqp.OSQP()
 
-        self.prob.setup(P, q, A, self.l, self.u, warm_start=False,verbose = False)
+        self.prob.setup(P, q, A, self.l, self.u,adaptive_rho = False, warm_start=False,verbose = False)
 
         # RECORD DATA
         self.out_alt = []
@@ -552,15 +561,15 @@ class Chessna2():
 
         # Apply first control input to the plant
         ctrl = res.x[-self.N*self.nu:-(self.N-1)*self.nu]
-        #print(res.x)
+        #print(res.x,ctrl)
         return ctrl
 
     def getSystemresponse(self,ctrl):
-        self.x0 =self.x0+ (self.Ad.dot(self.x0) + self.Bd.dot(ctrl))
+        self.x0 =  (self.Ad.dot(self.x0) + self.Bd.dot(ctrl))
 
         y = self.Cd.dot(self.x0)
         #self.x0 = x_next
-        self.inputs.append(ctrl)
+        self.inputs.append(ctrl*self.factor_rad_to_deg)
         self.out_alt.append(y[1])
         self.out_angle.append(y[0])
         

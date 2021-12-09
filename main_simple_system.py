@@ -6,17 +6,18 @@
 #       x(2) = y(1)
 #setpk  y(k) = x(k) + T* u(k)
 #       x(k +1) = y(k)
+
 import matplotlib.pyplot as plt
 import random
 import DeePC_OSQP as C3
 import numpy as np
-from SimpleSystems import CessnaSystem, ChessnaMPCController, InvertedPendulimSS, SimpleSystem1,SecondOrderSystem,QuadCopter,Chessna2
+from SimpleSystems import CessnaSystem, ChessnaMPCController, FederMasseSystem, InvertedPendulimSS, SimpleSystem1,SecondOrderSystem,QuadCopter,Chessna2
 import time
 #import control
 
 
 def main():
-    system1 = SimpleSystem2(0,0,0.5)
+    system1 = SimpleSystem1(0,0,0.5)
     input = 0.5
     for i in range(1,100):
         system1.OneTick(input)
@@ -31,17 +32,17 @@ def main():
 
     original_data = outputs
 
-    T_ini = 6# über 3 = schwingen, unter 3 = linearer
-    T_f = 25
+    T_ini = 3# über 3 = schwingen, unter 3 = linearer
+    T_f = 2
     ctrl = C3.Controller(system1.SystemHistory,T_ini,T_f,1,1)
     SOLLWERT = 25
     ctrl.updateReferenceWaypoint([SOLLWERT])
     #ctrl.updateReferenceInput([0.5])
-    ctrl.updateIOConstrains([-1],[1],[-100],[100])
-    ctrl.update_lambda_g(5)
-    ctrl.update_lambda_s(0.5)
-    ctrl.updateControlCost_R([[1]])
-    ctrl.updateTrackingCost_Q([[1]])
+    ctrl.updateIOConstrains([-1],[1],[-np.inf],[np.inf])
+    #ctrl.update_lambda_g(5)
+    #ctrl.update_lambda_s(0.5)
+    ctrl.updateControlCost_R([[1]]) # as I increase, only small changes in control
+    ctrl.updateTrackingCost_Q([[1]]) #as I increase, prediction gets closer to SOLLWERT?
     #ctrl.updateReferenceInput([0.5])
     system1.resetSystem()
     predictions_y = []
@@ -49,19 +50,16 @@ def main():
     soll = [SOLLWERT]
     for i in range(1,200):
         if i == 50:
-            ctrl.updateReferenceWaypoint([15])
+            ctrl.updateReferenceWaypoint([5])
         if i == 150:
             ctrl.updateReferenceWaypoint([25])
         #ctrl.updateReferenceWaypoint([10*np.sin((np.pi*2*(1/200)*i))+10])
         u,y,u_star,y_star,g = ctrl.getInputOutputPrediction(verbose = False)
-        soll.append(ctrl.y_r[0])
-        for j in range(1):
-            predictions_y.append(y_star[j][0])
-            system_output = system1.OneTick(u_star[j][0])
-            applied_inputs.append(system1.u)
-            ctrl.updateIn_Out_Measures(u_star[j],[system_output])
-            if i%50 == 0:
-                print(i,": ",u_star[j][0],system_output,y_star[j][0])
+        soll.append(ctrl.y_r[0]) 
+        predictions_y.append(y_star[0][0])
+        system_output = system1.OneTick(u_star[0][0])
+        applied_inputs.append(system1.u)
+        ctrl.updateIn_Out_Measures(u_star[0],[system_output])
     
     outputs2 = system1.SystemHistory[:,1]
     #print("u and y: ", [applied_inputs[i] for i in range(10)],
@@ -71,7 +69,7 @@ def main():
     titlesting = "T_ini:" + str(T_ini) + " T_f:" + str(T_f) +" lg:" + str(ctrl.lambda_g) + " ls:"+ str(ctrl.lambda_s)
     plt.title(titlesting)
     ax1.set_ylabel("Outputs")
-    ax1.plot(original_data,label='Init Data')
+    #ax1.plot(original_data,label='Init Data')
     ax1.plot(soll,label='SOLLWERT',c="y")
     ax1.plot(predictions_y,label='predictions',c="r")
     ax1.plot(outputs2,label="system behaviour",c="g")
@@ -357,8 +355,8 @@ def QuadCopter():
 def Chessna_2():
 
     timesteps = 0.1
-    sim_time = 1
-    sys = Chessna2(timesteps)
+    sim_time = 10
+    sys = Chessna2(timesteps,10)
     time = []
     
     for i in range(round(sim_time/timesteps)):
@@ -371,6 +369,7 @@ def Chessna_2():
 
     inputs = sys.inputs
     altitude = sys.out_alt
+    pitch_angle = sys.out_angle
 
 
     fig, ax1 = plt.subplots()
@@ -378,27 +377,134 @@ def Chessna_2():
     plt.title(titlesting)
     ax1.set_ylabel("Altitide")
     #ax1.plot(time,predictions,label='ALt_Pred.',c="r")
-    ax1.plot(time,altitude,label='altitude',c="g")
+    ax1.plot(time,altitude,label='altitude',c="b")
     #ax1.set_ylim([4500, 5500])
     plt.legend(loc=8)
     # ...
     ax2 = ax1.twinx()
     ax2.set_ylabel(" angle")
-    ax2.plot(time,inputs,label="applied inputs",c="c")
+    ax2.step(time,inputs,label="applied inputs",c="g")
+    ax2.plot(time,pitch_angle,label="output pitchangle",c="r")
+    #ax2.set_ylim([-30, 30])
+
+    plt.legend(loc=4)
+    plt.show()
+import time
+def FederMasse():
+    timesteps = 1
+    sim_time = 120
+    input_force = 5.0
+    sys = FederMasseSystem(timesteps)
+    timeline = [0.0]
+    
+    for i in range(round(sim_time/timesteps)):
+        if i*timesteps%10 == 0:
+            input_force = (random.random()*2)-1
+        timeline.append(i*timesteps)
+        sys.OneTick(input_force)
+
+
+    inputs = sys.in_force
+    x_out = sys.out_pos
+    data = np.hstack([np.reshape(inputs,(len(inputs),1)),np.reshape(x_out,(len(x_out),1))])
+
+    fig, ax1 = plt.subplots()
+    titlesting = "FederMasse System - Sprung"
+    plt.title(titlesting)
+    ax1.set_ylabel("length")
+    #ax1.plot(time,predictions,label='ALt_Pred.',c="r")
+    ax1.plot(timeline,x_out,label='x_out',c="g")
+    #ax1.set_ylim([4500, 5500])
+    plt.legend(loc=8)
+    # ...
+    ax2 = ax1.twinx()
+    ax2.set_ylabel(" Force")
+    ax2.plot(timeline,inputs,label="applied input force",c="c")
     #ax2.plot(time,output_pitch_angle,label="output pitchangle",c="b")
     #ax2.set_ylim([-90, 90])
 
     plt.legend(loc=4)
     plt.show()
+    #### DEEPC PREDICTION PART
+    T_ini = 3
+    T_f = 3
+    ctrl = C3.Controller(data,T_ini,T_f,1,1)
+    SOLLWERT = 2
+    ctrl.updateReferenceWaypoint([SOLLWERT])
+    #ctrl.updateReferenceInput([0.5])
+    ctrl.updateIOConstrains([-5],[5],[-np.inf],[np.inf])
+    #ctrl.update_lambda_g(2)
+    #ctrl.update_lambda_s(0.5)
+    #ctrl.updateControlCost_R([[1]])
+    #ctrl.updateTrackingCost_Q([[10000]])
+    #ctrl.updateReferenceInput([0.5])
+    sys.resetSystem()
+    predictions_y = [0]
+    applied_inputs = []
+    soll = [SOLLWERT]
+    timeline = [0]
+    #pid = PID(0.9, 10, 0.1, setpoint=SOLLWERT)
+    #pid.output_limits = (-5.0, 5.0)
+    #pid.sample_time = 0.005
+    
+    for i in range(0,sim_time):
+        time.sleep(0.01)
+        if i == 50:
+            SOLLWERT = 4
+            ctrl.updateReferenceWaypoint([SOLLWERT])
+            #pid.setpoint = SOLLWERT
+        timeline.append(i)
+        u,y,u_star,y_star,g = ctrl.getInputOutputPrediction(verbose = False)
+        #print(u,u_star)
+        #control = pid(sys.out_pos[-1])
+        soll.append(SOLLWERT)
+        applie_input = 100*u_star[0][0]
+        system_output = sys.OneTick(applie_input)
+        #system_output = sys.OneTick(control)
+        predictions_y.append(y_star[0][0])
+        applied_inputs.append(applie_input)
+        #applied_inputs.append(control)
+        ctrl.updateIn_Out_Measures([applie_input],[system_output])
+        #ctrl.updateReferenceInput(applie_input)
+    
+    inputs = sys.in_force
+    x_out = sys.out_pos
+    #print("u and y: ", [applied_inputs[i] for i in range(10)],
+    #                    [outputs2[i] for i in range(10)])
 
+    fig, ax1 = plt.subplots()
+    titlesting = "DEEPC CONTROLLED to " + str(SOLLWERT)
+    plt.title(titlesting)
+    ax1.set_ylabel("Outputs")
+    #ax1.plot(data[:,1],label='Init Data')
+    ax1.plot(timeline,soll,label='SOLLWERT',c="y")
+    ax1.plot(timeline,predictions_y,label='predictions',c="r")
+    ax1.plot(timeline,x_out,label="system behaviour",c="g")
+    
+    plt.legend(loc=8)
+    # ...
+    ax2 = ax1.twinx()
+    ax2.set_ylabel("Inputs")
+    ax2.plot(timeline,inputs,label="applied inputs",c="b")
+    #ax2.plot(data[:,0],label='Init inputs')
+    #ax2.set_ylim([-7, 7])
 
+    plt.legend(loc=4)
+    plt.show()
+
+def ControlWithPID():
+    pid = PID(0.3, 0.1, 0.00, setpoint=SOLLWERT)
+    pid.output_limits = (-1.0, 1.0)
+    pid.sample_time = 0.00
+    control = pid(system_output)
 #main5()
 #main3()
 #main4()
 #main()
 #main2()
 #Chessna()
-Chessna_2()
+#Chessna_2()
+FederMasse()
 
 
 

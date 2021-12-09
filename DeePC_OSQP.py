@@ -60,7 +60,7 @@ class Controller:
         self.lambda_g = 1 #weight on regularization of g = 500
 
         # all the initalization for the SOlver:
-        init_value = 0.5   
+        init_value = 0.0   
         self.u_len = self.T_f*self.input_size
         self.y_len =  self.T_f*self.output_size
         self.g_len = len(self.input_sequence) - self.L
@@ -71,8 +71,8 @@ class Controller:
         # this will get updated once the Vehicle starts to produce its own data
         for i in range(self.T_ini):
             #self.updateIn_Out_Measures(self.input_sequence[self.data_length-1 - self.T_ini + i], self.output_sequence[self.data_length-1 - self.T_ini + i])
-            idx = len(self.input_sequence) - self.T_ini + 1
-            self.updateIn_Out_Measures(self.input_sequence[idx], self.output_sequence[idx])
+            idx = len(self.input_sequence) - self.T_ini 
+            self.updateIn_Out_Measures(self.input_sequence[idx-1], self.output_sequence[idx-1])
         
         # these nees y_ini and u_ini to be filled corretly by the above code
         self.P = self.calculate_P()
@@ -141,18 +141,18 @@ class Controller:
         out : matrix q
               Matrix of given shape.
         """
-        temp1 = np.matmul(-2.0*np.array(self.u_r),self.R)# TODO: maybe -
+        temp1 = np.matmul(-np.array(self.u_r),self.R)# TODO: maybe -
         q_u = temp1
         for i in range(1,self.T_f):
             q_u = np.hstack((temp1,q_u))
-        temp2 = np.matmul(-2.0*np.array(self.y_r),self.Q) # TODO: maybe -
+        temp2 = np.matmul(-np.array(self.y_r),self.Q) # TODO: maybe -
         q_y = temp2
         for i in range(1,self.T_f):
             q_y = np.hstack((temp2,q_y))
         #print(q_y)
         #print("self.y_ini",np.shape(self.y_ini)," self.Y_p",np.shape(self.Y_p))
-        q_g_first_term = np.matmul(self.y_ini.flatten().T,self.Y_p)*-2.0*self.lambda_s # TODO: maybe -
-        q_g_second_term = self.lambda_g*-2.0*self.g_r.T # TODO: maybe -
+        q_g_first_term = np.matmul(self.y_ini.flatten().T,self.Y_p)*-self.lambda_s # TODO: maybe -
+        q_g_second_term = self.lambda_g*-self.g_r.T # TODO: maybe -
         #print("q_u",np.shape(q_u))
         #print("q_y",np.shape(q_y))
         #print("q_g_first_term",np.shape(q_g_first_term))
@@ -295,7 +295,7 @@ class Controller:
     def solve_for_x_regularized(self,verbose_l = False):
         
         prob = osqp.OSQP()
-        prob.setup(self.P, self.q, self.A, l = self.lb, u = self.ub, warm_start = False,eps_rel  = 0.1,adaptive_rho = False, polish = False,alpha=1,max_iter= 10000,verbose = verbose_l)
+        prob.setup(self.P, self.q, self.A, l = self.lb, u = self.ub, warm_start = False,adaptive_rho = False, polish = False,max_iter= 10000,verbose = verbose_l)
         res = prob.solve()
         return res.x
         

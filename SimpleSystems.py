@@ -37,11 +37,11 @@ class SimpleSystem1:
         self.SystemHistory = np.vstack((self.SystemHistory,[inputt,self.y]))
         return self.y
 
-<<<<<<< Updated upstream
 
 class CessnaSystem():
-    def __init__(self) -> None:
+    def __init__(self,SAMPLETIME) -> None:
         print("Init CHessna System")
+        self.T_SAMPLE = SAMPLETIME
         self.A = np.asarray([[-1.288,0,0.98,0],[0,0,1,0],[-5.4293,0,-1.8366,0],[-128.2,128.2,0,1]])
         self.B = np.asarray([[-0.3],[0],[-17],[0]])
         self.C = np.asarray([[0,1,0,0],[0,0,0,1]])
@@ -60,8 +60,8 @@ class CessnaSystem():
         u = np.asarray([input])
         #print(np.shape(self.x))
         
-        self.x = np.matmul(self.A,self.x) + np.matmul(self.B,[u])
-        self.y = np.matmul(self.C,self.x)
+        self.x = (np.matmul(self.A,self.x) + np.matmul(self.B,[u]))*self.T_SAMPLE
+        self.y = np.matmul(self.C,self.x)*(1/self.T_SAMPLE)
         #print(np.shape(self.C),np.shape(self.x))
         self.SystemHistory = np.vstack((self.SystemHistory,[u[0],self.y[0],self.y[1]]))
         #print(np.shape(u[0].tolist()),np.shape(self.y[0].tolist()),np.shape(self.y[1]),u[0],self.y[0],self.y[1])
@@ -304,7 +304,6 @@ class SecondOrderSystem:
 import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
-import control
 
 class FederMasseSystem:
     def __init__(self) -> None:
@@ -341,82 +340,231 @@ class FederMasseSystem:
         plt.grid()
         plt.show()
 
-=======
-# integrating the input squared, but keeping the sign (causes problems otherwise)
-class SimpleSystem2:
-    def __init__(self,x_0,y_0,gain):
-        self.x0 = x_0
-        self.y0 = y_0
-        self.T = gain
-        self.x = self.x0
-        self.y = self.y0
-        self.u = 0
-        self.SystemHistory = np.array([[self.y0,self.x0]])
+
+class QuadCopter():
+    def __init__(self):
+
+        Ad = sparse.csc_matrix([
+            [1.,      0.,     0., 0., 0., 0., 0.1,     0.,     0.,  0.,     0.,     0.    ],
+            [0.,      1.,     0., 0., 0., 0., 0.,      0.1,    0.,  0.,     0.,     0.    ],
+            [0.,      0.,     1., 0., 0., 0., 0.,      0.,     0.1, 0.,     0.,     0.    ],
+            [0.0488,  0.,     0., 1., 0., 0., 0.0016,  0.,     0.,  0.0992, 0.,     0.    ],
+            [0.,     -0.0488, 0., 0., 1., 0., 0.,     -0.0016, 0.,  0.,     0.0992, 0.    ],
+            [0.,      0.,     0., 0., 0., 1., 0.,      0.,     0.,  0.,     0.,     0.0992],
+            [0.,      0.,     0., 0., 0., 0., 1.,      0.,     0.,  0.,     0.,     0.    ],
+            [0.,      0.,     0., 0., 0., 0., 0.,      1.,     0.,  0.,     0.,     0.    ],
+            [0.,      0.,     0., 0., 0., 0., 0.,      0.,     1.,  0.,     0.,     0.    ],
+            [0.9734,  0.,     0., 0., 0., 0., 0.0488,  0.,     0.,  0.9846, 0.,     0.    ],
+            [0.,     -0.9734, 0., 0., 0., 0., 0.,     -0.0488, 0.,  0.,     0.9846, 0.    ],
+            [0.,      0.,     0., 0., 0., 0., 0.,      0.,     0.,  0.,     0.,     0.9846]
+            ])
+        Bd = sparse.csc_matrix([
+            [0.,      -0.0726,  0.,     0.0726],
+            [-0.0726,  0.,      0.0726, 0.    ],
+            [-0.0152,  0.0152, -0.0152, 0.0152],
+            [-0.,     -0.0006, -0.,     0.0006],
+            [0.0006,   0.,     -0.0006, 0.0000],
+            [0.0106,   0.0106,  0.0106, 0.0106],
+            [0,       -1.4512,  0.,     1.4512],
+            [-1.4512,  0.,      1.4512, 0.    ],
+            [-0.3049,  0.3049, -0.3049, 0.3049],
+            [-0.,     -0.0236,  0.,     0.0236],
+            [0.0236,   0.,     -0.0236, 0.    ],
+            [0.2107,   0.2107,  0.2107, 0.2107]])
+        [nx, nu] = Bd.shape
+
+        # Constraints
+        u0 = 10.5916
+        umin = np.array([9.6, 9.6, 9.6, 9.6]) - u0
+        umax = np.array([13., 13., 13., 13.]) - u0
+        xmin = np.array([-np.pi/6,-np.pi/6,-np.inf,-np.inf,-np.inf,-1.,
+                        -np.inf,-np.inf,-np.inf,-np.inf,-np.inf,-np.inf])
+        xmax = np.array([ np.pi/6, np.pi/6, np.inf, np.inf, np.inf, np.inf,
+                        np.inf, np.inf, np.inf, np.inf, np.inf, np.inf])
+
+        # Objective function
+        Q = sparse.diags([0., 0., 10., 10., 10., 10., 0., 0., 0., 5., 5., 5.])
+        QN = Q
+        R = 0.1*sparse.eye(4)
+
+        # Initial and reference states
+        x0 = np.zeros(12)
+        xr = np.array([0.,0.,1.,0.,0.,0.,0.,0.,0.,0.,0.,0.])
+
+        # Prediction horizon
+        N = 10
+
+        # Cast MPC problem to a QP: x = (x(0),x(1),...,x(N),u(0),...,u(N-1))
+        # - quadratic objective
+        P = sparse.block_diag([sparse.kron(sparse.eye(N), Q), QN,
+                            sparse.kron(sparse.eye(N), R)], format='csc')
+        # - linear objective
+        q = np.hstack([np.kron(np.ones(N), -Q.dot(xr)), -QN.dot(xr),
+                    np.zeros(N*nu)])
+        # - linear dynamics
+        Ax = sparse.kron(sparse.eye(N+1),-sparse.eye(nx)) + sparse.kron(sparse.eye(N+1, k=-1), Ad)
+        Bu = sparse.kron(sparse.vstack([sparse.csc_matrix((1, N)), sparse.eye(N)]), Bd)
+        Aeq = sparse.hstack([Ax, Bu])
+        leq = np.hstack([-x0, np.zeros(N*nx)])
+        ueq = leq
+        # - input and state constraints
+        Aineq = sparse.eye((N+1)*nx + N*nu)
+        lineq = np.hstack([np.kron(np.ones(N+1), xmin), np.kron(np.ones(N), umin)])
+        uineq = np.hstack([np.kron(np.ones(N+1), xmax), np.kron(np.ones(N), umax)])
+        # - OSQP constraints
+        A = sparse.vstack([Aeq, Aineq], format='csc')
+        l = np.hstack([leq, lineq])
+        u = np.hstack([ueq, uineq])
+
+        # Create an OSQP object
+        prob = osqp.OSQP()
+
+        # Setup workspace
+        prob.setup(P, q, A, l, u, warm_start=True)
+
+        # Simulate in closed loop
+        nsim = 15
+        self.system_behaviour = []
+        self.inputs = []
+        self.time = []
+        for i in range(nsim):
+            # Solve
+            self.time.append(i)
+            res = prob.solve()
+
+            # Check solver status
+            if res.info.status != 'solved':
+                raise ValueError('OSQP did not solve the problem!')
+
+            # Apply first control input to the plant
+            ctrl = res.x[-N*nu:-(N-1)*nu]
+            x0 = Ad.dot(x0) + Bd.dot(ctrl)
+            print(x0)
+            self.inputs.append(ctrl)
+            self.system_behaviour.append(x0[2])
+
+            # Update initial state
+            l[:nx] = -x0
+            u[:nx] = -x0
+            prob.update(l=l, u=u)
+
+class Chessna2():
+    def __init__(self,TIMESTEP):
     
-    def resetSystem(self):
-        self.x = self.x0
-        self.y = self.y0
-        self.clearHistory()
+        self.TIMESTEP = TIMESTEP
 
-    def clearHistory(self):
-        self.SystemHistory = np.array([[self.y0,self.x0]])
+        self.Ad = sparse.csc_matrix([
+            [-1.2822, 0 ,0.98, 0 ],
+            [0, 0, 1, 0],
+            [-5.4293, 0, -1.8366, 0 ],
+            [128.2, 128.2, 0, 0]])*self.TIMESTEP
+        
+        self.Bd = sparse.csc_matrix([
+            [-0.3],
+            [0],
+            [   -17],
+            [0,]])*self.TIMESTEP
+        self.Cd = sparse.csc_matrix([[0, 1 ,0, 0 ],
+                                    [0, 0, 0, 1],])
+        [nx, nu] = self.Bd.shape
+        self.nx = nx
+        self.nu = nu
+        #self.Ad =  self.Ad*self.TIMESTEP + sparse.eye(nx)
+        # Prediction horizon
+        N = 10
+        self.N = N
 
-    def truncateInput(self,inp):
-        temp = 0
-        if inp < -1:
-            temp = -1
-        if inp > 1:
-            temp = 1
-        if inp > -1 and inp < 1:
-            temp = inp
-        return temp
+        # Constraints
 
-    def OneTick(self,input):
-        #inputt = self.truncateInput(input)
-        inputt = input
-        self.u = inputt
-        self.y = self.x + self.T * inputt*inputt * np.sign(inputt)
-        self.x = self.y
-        self.SystemHistory = np.vstack((self.SystemHistory,[inputt,self.y]))
-        return self.y
+        u0 = 0
+        umin = np.array([-0.262])
+        umax = np.array([0.262])
+        xmin = np.array([-np.inf,-0.349,-np.inf, 0.0])
+        xmax = np.array([np.inf, 0.349,  np.inf, np.inf])
 
-class SimpleSystem3:
-    def __init__(self,x_0,y_0,gain):
-        self.x0 = x_0
-        self.xt_1 = x_0
-        self.xt_2 = x_0
-        self.y0 = y_0
-        self.y0 = y_0
-        self.T = gain
-        self.x = self.x0
-        self.y = self.y0
-        self.u = 0
-        self.SystemHistory = np.array([[self.y0,self.x0]])
-    
-    def resetSystem(self):
-        self.x = self.x0
-        self.y = self.y0
-        self.clearHistory()
+        deltau_min = np.array([-0.524])*self.TIMESTEP
+        deltau_max = np.array([0.524])*self.TIMESTEP
 
-    def clearHistory(self):
-        self.SystemHistory = np.array([[self.y0,self.x0]])
+        # Objective function
+        Q = sparse.diags([1., 1., 1., 1.])
+        QN = Q
+        R = sparse.diags([1.])
 
-    def truncateInput(self,inp):
-        temp = 0
-        if inp < -1:
-            temp = -1
-        if inp > 1:
-            temp = 1
-        if inp > -1 and inp < 1:
-            temp = inp
-        return temp
+        # Initial and reference states
+        #self.x0 = np.zeros(nx)
+        self.x0 = np.array([0.,0.,0.,5000.,])
+        xr = np.array([0.,0.,0.,5020.,])
 
-    def OneTick(self,input):
-        #inputt = self.truncateInput(input)
-        inputt = input
-        self.u = inputt
-        self.y = self.x + self.T * inputt*inputt * np.sign(inputt)
-        self.x = self.y
-        self.SystemHistory = np.vstack((self.SystemHistory,[inputt,self.y]))
-        return self.y
->>>>>>> Stashed changes
+        # Cast MPC problem to a QP: x = (x(0),x(1),...,x(N),u(0),...,u(N-1))
+        # - quadratic objective
+        P = sparse.block_diag([sparse.kron(sparse.eye(N), Q), QN,
+                            sparse.kron(sparse.eye(N), R)], format='csc')
+        # - linear objective
+        q = np.hstack([np.kron(np.ones(N), -Q.dot(xr)), -QN.dot(xr),
+                    np.zeros(N*nu)])
+        # - linear dynamics
+        Ax = sparse.kron(sparse.eye(N+1),-sparse.eye(nx)) + sparse.kron(sparse.eye(N+1, k=-1), self.Ad)
+        Bu = sparse.kron(sparse.vstack([sparse.csc_matrix((1, N)), sparse.eye(N)]), self.Bd)
+        Aeq = sparse.hstack([Ax, Bu])
+        leq = np.hstack([-self.x0, np.zeros(N*nx)])
+        ueq = leq
+        # - input and state constraints
+        Aineq = sparse.eye((N+1)*nx + N*nu)
+
+        # add the input constrain for deltau
+        delta_x = sparse.kron(sparse.eye(N+1),np.zeros((nu,nx)))
+        delta_u = -sparse.eye(N)+sparse.eye(N, k=1)
+        delta_u = sparse.vstack([sparse.csc_matrix((1, N)), delta_u])
+        A_delta = sparse.hstack([delta_x, delta_u])
+        
+
+        lineq = np.hstack([np.kron(np.ones(N+1), xmin), np.kron(np.ones(N), umin)])
+        uineq = np.hstack([np.kron(np.ones(N+1), xmax), np.kron(np.ones(N), umax)])
+
+        # delta u constraints
+        l_deltau = np.kron(np.ones(N), deltau_min)      
+        u_deltau = np.kron(np.ones(N), deltau_max)
+        l_deltau = np.hstack([0.0,l_deltau])
+        u_deltau = np.hstack([0.0,u_deltau])
+        
+        # - OSQP constraints
+        A = sparse.vstack([Aeq, Aineq,A_delta], format='csc')
+        self.l = np.hstack([leq, lineq,l_deltau])
+        self.u = np.hstack([ueq, uineq,u_deltau])
+
+        # Create an OSQP object
+        self.prob = osqp.OSQP()
+
+        self.prob.setup(P, q, A, self.l, self.u, warm_start=False,verbose = False)
+
+        # RECORD DATA
+        self.out_alt = []
+        self.out_angle = []
+        self.inputs = []
+        self.time = []
+
+
+    def getControl(self):
+        res = self.prob.solve()
+        # Check solver status
+        if res.info.status != 'solved':
+            raise ValueError('OSQP did not solve the problem!')
+
+        # Apply first control input to the plant
+        ctrl = res.x[-self.N*self.nu:-(self.N-1)*self.nu]
+        #print(res.x)
+        return ctrl
+
+    def getSystemresponse(self,ctrl):
+        self.x0 =self.x0+ (self.Ad.dot(self.x0) + self.Bd.dot(ctrl))
+
+        y = self.Cd.dot(self.x0)
+        #self.x0 = x_next
+        self.inputs.append(ctrl)
+        self.out_alt.append(y[1])
+        self.out_angle.append(y[0])
+        
+    def updateSystem(self):
+        self.l[:self.nx] = -self.x0
+        self.u[:self.nx] = -self.x0
+        self.prob.update(l=self.l, u=self.u)

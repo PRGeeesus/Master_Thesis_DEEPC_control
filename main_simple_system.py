@@ -10,11 +10,7 @@ import matplotlib.pyplot as plt
 import random
 import DeePC_OSQP as C3
 import numpy as np
-<<<<<<< Updated upstream
-from SimpleSystems import CessnaSystem, ChessnaMPCController, InvertedPendulimSS, SimpleSystem1,SecondOrderSystem
-=======
-from SimpleSystems import SimpleSystem1,SimpleSystem2
->>>>>>> Stashed changes
+from SimpleSystems import CessnaSystem, ChessnaMPCController, InvertedPendulimSS, SimpleSystem1,SecondOrderSystem,QuadCopter,Chessna2
 import time
 #import control
 
@@ -132,7 +128,6 @@ def main2():
     plt.legend(loc=4)
     plt.show()
 
-<<<<<<< Updated upstream
 def main3():
     sys = SecondOrderSystem(250,100)
     outputs = []
@@ -156,10 +151,6 @@ def main3():
 
     #plt.legend(loc=4)
     plt.show()
-=======
-
-#syst = control.tf(1,[0.25,0.25,1])
->>>>>>> Stashed changes
 
 def main4():
 
@@ -281,8 +272,6 @@ def main4():
     plt.legend(loc=4)
     plt.show()
 
-<<<<<<< Updated upstream
-import control
 def main5():
     system = InvertedPendulimSS()
     input = [1]
@@ -308,17 +297,109 @@ def main5():
     plt.legend(loc=4)
     plt.show()
 
+def Chessna():
+    sample_time = 0.1
+    sim_time    = 10
+    sys = CessnaSystem(sample_time)
+    input = 0.0 * (np.pi/180)
+    time = [0]
+    for i in range(round(sim_time /sample_time)):
+        time.append(i*sample_time)
+        sys.OneTick(input)
+    
+    output_alt = sys.SystemHistory[:,2]
+    inputs     = sys.SystemHistory[:,0]
+
+    fig, ax1 = plt.subplots()
+    titlesting = "Title"
+    plt.title(titlesting)
+    ax1.set_ylabel("Altitide")
+    #ax1.plot(time,predictions,label='ALt_Pred.',c="r")
+    ax1.plot(time,output_alt,label='ALtitude',c="g")
+    print(output_alt)
+    #ax1.set_ylim([4500, 5500])
+    plt.legend(loc=8)
+    # ...
+    ax2 = ax1.twinx()
+    ax2.set_ylabel(" angle")
+    ax2.plot(time,inputs,label="applied inputs",c="c")
+    #ax2.plot(time,output_pitch_angle,label="output pitchangle",c="b")
+    #ax2.set_ylim([-90, 90])
+
+    plt.legend(loc=4)
+    plt.show()
+
+def QuadCopter():
+    sys = Chessna2()
+
+    inputs = sys.inputs
+    behaviour = sys.system_behaviour
+    time = sys.time
+
+    fig, ax1 = plt.subplots()
+    titlesting = "Title"
+    plt.title(titlesting)
+    ax1.set_ylabel("Altitide")
+    #ax1.plot(time,predictions,label='ALt_Pred.',c="r")
+    ax1.plot(time,behaviour,label='behaviour',c="g")
+    #ax1.set_ylim([4500, 5500])
+    plt.legend(loc=8)
+    # ...
+    ax2 = ax1.twinx()
+    ax2.set_ylabel(" angle")
+    ax2.plot(time,inputs,label="applied inputs",c="c")
+    #ax2.plot(time,output_pitch_angle,label="output pitchangle",c="b")
+    #ax2.set_ylim([-90, 90])
+
+    plt.legend(loc=4)
+    plt.show()
+
+def Chessna_2():
+
+    timesteps = 0.1
+    sim_time = 1
+    sys = Chessna2(timesteps)
+    time = []
+    
+    for i in range(round(sim_time/timesteps)):
+
+        time.append(i*timesteps)
+        ctrl = sys.getControl()
+        sys.getSystemresponse(ctrl)
+        sys.updateSystem()
+
+
+    inputs = sys.inputs
+    altitude = sys.out_alt
+
+
+    fig, ax1 = plt.subplots()
+    titlesting = "Title"
+    plt.title(titlesting)
+    ax1.set_ylabel("Altitide")
+    #ax1.plot(time,predictions,label='ALt_Pred.',c="r")
+    ax1.plot(time,altitude,label='altitude',c="g")
+    #ax1.set_ylim([4500, 5500])
+    plt.legend(loc=8)
+    # ...
+    ax2 = ax1.twinx()
+    ax2.set_ylabel(" angle")
+    ax2.plot(time,inputs,label="applied inputs",c="c")
+    #ax2.plot(time,output_pitch_angle,label="output pitchangle",c="b")
+    #ax2.set_ylim([-90, 90])
+
+    plt.legend(loc=4)
+    plt.show()
+
+
 #main5()
 #main3()
-main4()
+#main4()
 #main()
 #main2()
+#Chessna()
+Chessna_2()
 
-=======
-main()
-#main2()
-#main3()
->>>>>>> Stashed changes
 
 
 

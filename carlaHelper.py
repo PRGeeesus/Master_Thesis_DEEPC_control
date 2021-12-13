@@ -1,6 +1,6 @@
 import sys
 sys.path.append('C:\\Users\\Martin\\Documents\\CARLA\\PythonAPI')
-import carla
+#import carla
 import random
 import time
 import numpy as np

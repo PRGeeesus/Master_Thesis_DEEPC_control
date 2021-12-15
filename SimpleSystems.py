@@ -1,5 +1,6 @@
 import time
 import numpy as np
+import csv
 
 class SimpleSystem1:
     def __init__(self,x_0,y_0,gain):
@@ -322,11 +323,11 @@ class FederMasseSystem:
         self.A = np.eye(2) + A*self.timestep
         self.B = B*self.timestep
         self.C = C
-        self.x0 = np.array([0.,0.])
+        self.x0 = np.array([0.0,0.0])
 
-        self.out_pos = [self.x0[0]]
-        self.out_vel = [self.x0[1]]
-        self.in_force = [0]
+        self.out_pos = [0.0]
+        self.out_vel = [0.0]
+        self.in_force = [0.0]
 
     def resetSystem(self):
         self.x0 = np.array([0.,0.])
@@ -577,3 +578,41 @@ class Chessna2():
         self.l[:self.nx] = -self.x0
         self.u[:self.nx] = -self.x0
         self.prob.update(l=self.l, u=self.u)
+
+def saveAsCSV(filename,data):
+    print(len(data)," datapoints collected")
+    print("Saving recorded data in csv file: " + filename + ".csv")
+    with open(filename+'.csv', 'w') as f:
+              write = csv.writer(f)
+              write.writerows(data)
+    np.savetxt(filename + "_numpy.csv", 
+           data,
+           delimiter =", ", 
+           fmt ='% s')
+
+def readFromCSV(filename):
+    return np.genfromtxt(filename+".csv", delimiter=",")
+
+# mean between prediction and actual system output
+def Evaluate_Tracking_Accuarcy(system_output,controller_prediction):
+    if len(system_output) != len(controller_prediction):
+        print("Can not evaluate Tracking AAAccuary. Unequal array sizes")
+    else:
+        difference = []
+        for i in range(len(system_output)):
+            difference.append(np.abs(system_output[i] - controller_prediction[i]))
+        mean = np.mean(difference)
+        stddev = np.std(difference)
+    return mean, stddev
+
+# mean between soll and system state
+def Evaluate_Control_Accuarcy(sollwert,system_output):
+    if len(sollwert) != len(system_output):
+        print("Can not evaluate Tracking AAAccuary. Unequal array sizes")
+    else:
+        difference = []
+        for i in range(len(system_output)):
+            difference.append(np.abs(sollwert[i] - system_output[i]))
+        mean = np.mean(difference)
+        stddev = np.std(difference)
+    return mean, stddev

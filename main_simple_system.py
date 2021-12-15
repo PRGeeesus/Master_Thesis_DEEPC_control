@@ -12,6 +12,7 @@ import random
 import DeePC_OSQP as C3
 import numpy as np
 from SimpleSystems import CessnaSystem, ChessnaMPCController, FederMasseSystem, InvertedPendulimSS, SimpleSystem1,SecondOrderSystem,QuadCopter,Chessna2
+import SimpleSystems
 import time
 from carlaHelper import readFromCSV
 import csv
@@ -21,8 +22,8 @@ import csv
 def main():
     system1 = SimpleSystem1(0,0,1)
     input = 0.5
-    for i in range(1,300):
-        system1.OneTick(input)
+    for i in range(1,40):
+        #system1.OneTick(input)
         system1.OneTick((random.random()-0.5)*2)
         #system1.OneTick(random.random())
         #system1.OneTick(np.abs(np.sin(i*0.1)))
@@ -32,9 +33,15 @@ def main():
 
     original_data = outputs
 
-    T_ini = 5# über 3 = schwingen, unter 3 = linearer
-    T_f = 10
-    Controller_settings = {"lambda_s":20,"lambda_g":0.01}
+    T_ini =2# über 3 = schwingen, unter 3 = linearer
+    T_f = 7
+    Controller_settings = {"lambda_s":1,
+                           "lambda_g":1,
+                    "out_constr_lb":[-20],
+                    "out_constr_ub":[20],
+                    "in_constr_lb":[-np.inf],
+                    "in_constr_ub":[np.inf]}
+
     ctrl = C3.Controller(system1.SystemHistory,T_ini,T_f,1,1,**Controller_settings)
     SOLLWERT = 15
     ctrl.updateReferenceWaypoint([SOLLWERT])
@@ -48,17 +55,24 @@ def main():
     predictions_y = []
     applied_inputs = []
     soll = [SOLLWERT]
+    u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
+    prediction = 0
+    control_input = 1
     for i in range(1,100):
         if i == 50:
             ctrl.updateReferenceWaypoint([10])
 
         #ctrl.updateReferenceWaypoint([10*np.sin((np.pi*2*(1/200)*i))+10])
-        u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
+        if i > T_ini+3:
+            u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
+            prediction = y_star[0][0]
+            control_input = u_star[0][0]
         soll.append(ctrl.y_r[0]) 
-        predictions_y.append(y_star[0][0])
-        system_output = system1.OneTick(u_star[0][0])
+        predictions_y.append(prediction)
+        system_output = system1.OneTick(control_input)
         applied_inputs.append(system1.u)
-        ctrl.updateIn_Out_Measures(u_star[0],[system_output])
+        ctrl.updateIn_Out_Measures([control_input],[system_output])
+        ctrl.test_g_validity()
     
     outputs2 = system1.SystemHistory[:,1]
     #print("u and y: ", [applied_inputs[i] for i in range(10)],
@@ -392,13 +406,13 @@ def Chessna_2():
 import time
 def FederMasse():
     timesteps = 1
-    sim_time = 400
+    sim_time = 200
     input_force = 5.0
     sys = FederMasseSystem(timesteps)
     timeline = [0.0]
     
     for i in range(round(sim_time/timesteps)):
-        if i*timesteps%10 == 0:
+        if i == 30:
             input_force = random.random()
         timeline.append(i*timesteps)
         sys.OneTick(input_force)
@@ -408,9 +422,10 @@ def FederMasse():
     x_out = sys.out_pos
     data = np.hstack([np.reshape(inputs,(len(inputs),1)),np.reshape(x_out,(len(x_out),1))])
     
-
+    # SimpleSystems.saveAsCSV("Feder_Masse_"+str(len(data2)), data2)
+    #data = SimpleSystems.readFromCSV("Feder_Masse_101")
    
-    #### PLOTTING COLLECTED DATA
+    ### PLOTTING COLLECTED DATA
     # fig, ax1 = plt.subplots()
     # titlesting = "FederMasse System - Sprung"
     # plt.title(titlesting)
@@ -430,14 +445,14 @@ def FederMasse():
     # plt.show()
 
     #### DEEPC PREDICTION PART
-    T_ini = 5
-    T_f = 20
+    T_ini = 3
+    T_f = 10
     settings = {"lambda_s":1,
                 "lambda_g":1,
-                    "out_constr_lb":[-20],
-                    "out_constr_ub":[20],
-                    "in_constr_lb":[-np.inf],
-                    "in_constr_ub":[np.inf]}
+                "out_constr_lb":[-20],
+                "out_constr_ub":[20],
+                "in_constr_lb":[-np.inf],
+                "in_constr_ub":[np.inf]}
 
     ctrl = C3.Controller(data,T_ini,T_f,1,1,**settings)
     SOLLWERT = 5
@@ -455,30 +470,43 @@ def FederMasse():
     #pid = PID(0.9, 10, 0.1, setpoint=SOLLWERT)
     #pid.output_limits = (-5.0, 5.0)
     #pid.sample_time = 0.005
-    
-    for i in range(0,100):
+    Control_input = 2
+    prediction = 0
+    u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
+    for i in range(0,200): 
         if i == 50:
-            SOLLWERT = -3
+            SOLLWERT = -5
             ctrl.updateReferenceWaypoint([SOLLWERT])
         #     #pid.setpoint = SOLLWERT
         timeline.append(i)
-        u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
+        if i > 20:
+            Control_input
+            u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
+            Control_input = u[0][0]
+            prediction = y_star[0][0]
         #print(u,u_star)
         #control = pid(sys.out_pos[-1])
         soll.append(SOLLWERT)
-        applied_input = u_star[0][0]
+        applied_input = Control_input
         system_output = sys.OneTick(applied_input)
         #system_output = sys.OneTick(control)
-        predictions_y.append(y_star[0][0])
+        predictions_y.append(prediction)
         applied_inputs.append(applied_input)
         #applied_inputs.append(control)
         ctrl.updateIn_Out_Measures([applied_input],[system_output])
         ctrl.updateReferenceInput([applied_input])
+        ctrl.test_g_validity()
     
     inputs = sys.in_force
     x_out = sys.out_pos
     #print("u and y: ", [applied_inputs[i] for i in range(10)],
     #                    [outputs2[i] for i in range(10)])
+    ctrl_accuary_mean,ctrl_accuary_std = SimpleSystems.Evaluate_Control_Accuarcy(soll,x_out)
+    predict_accuary_mean,predict_accuary_std = SimpleSystems.Evaluate_Tracking_Accuarcy(x_out, predictions_y)
+    print("ctrl_accuary_mean:",ctrl_accuary_mean,"\n")
+    print("ctrl_accuary_std:",ctrl_accuary_std,"\n")
+    print("predict_accuary_mean:",predict_accuary_mean,"\n")
+    print("predict_accuary_std:",predict_accuary_std,"\n")
 
     fig, ax1 = plt.subplots()
     titlesting = "DEEPC CONTROLLED to " + str(SOLLWERT) + ""
@@ -509,10 +537,10 @@ def ControlWithPID():
 #main5()
 #main3()
 #main4()
-#main()
+main()
 #main2()
 #Chessna()
-Chessna_2()
+#Chessna_2()
 #FederMasse()
 
 

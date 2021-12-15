@@ -34,13 +34,15 @@ class Controller:
         
         self.data_length = len(data)
         self.data = np.asarray(data)
-        
+
         if len(self.data[0]) != (input_size + output_size):
             print("initalization data dimenstion does not match iniatlized in/out sizes: ",len(self.data[0])," != ",input_size," + ",output_size)
 
         self.T_ini = T_ini
         self.T_f = T_f
         self.L = self.T_ini + self.T_f
+
+        self.check_data_sufficiency() # checks for T > (m+1)*L+1
 
 
         # defines:
@@ -101,7 +103,12 @@ class Controller:
         self.A = self.calculate_A()
         
         self.calculate_bounds_u_l()
-        self.SolverSettings = {"warm_start" : False,"adaptive_rho" : False,"eps_abs": 0.0001, "polish" : False,"max_iter": 10000,"verbose" :False}
+        self.SolverSettings = {"warm_start" : False,
+                                "adaptive_rho" : False,
+                                "eps_rel": 0.001,
+                                "eps_abs": 0.0001,
+                                "max_iter": 10000,
+                                "verbose" :False}
         self.prob = osqp.OSQP() #sometimes there is ValueError: Workspace allocation error!
 
         self.prob = osqp.OSQP()
@@ -203,22 +210,24 @@ class Controller:
             ->in update_y_r
             ->in update_in_out_measures
 
-        q = [u_r*R ... y_r*Q...y_ini*Y_p + -gr^T....] u      =  u_r*R*u  +  y_r*Q*y  +  y_ini*Y_p*g - gr*g
+        q = [u_r*R ... y_r*Q...(y_ini*Y_p + -gr^T)....] u      =  u_r*R*u  +  y_r*Q*y  +  y_ini*Y_p*g - gr*g
                                                       y
                                                       g
         """
-        temp1 = np.matmul(-2*np.array(self.u_r),self.R)# TODO: maybe -2
+        factor = -2
+        temp1 = factor*np.matmul(self.R,np.array(self.u_r))# TODO: maybe -2
         q_u = temp1
         for i in range(1,self.T_f):
             q_u = np.hstack((temp1,q_u))
-        temp2 = np.matmul(-2*np.array(self.y_r),self.Q) # TODO: maybe -2
+        temp2 = factor*np.matmul(self.Q,np.array(self.y_r)) # TODO: maybe -2
         q_y = temp2
         for i in range(1,self.T_f):
             q_y = np.hstack((temp2,q_y))
         #print(q_y)
         #print("self.y_ini",np.shape(self.y_ini)," self.Y_p",np.shape(self.Y_p))
-        q_g_first_term = np.matmul(self.y_ini.flatten().T,self.Y_p)*-2*self.lambda_s # TODO: maybe -2
-        q_g_second_term = self.lambda_g*-2*self.g_r.T # TODO: maybe -2
+        #print(np.shape(self.y_ini.flatten().T),np.shape(self.y_ini.flatten()))
+        q_g_first_term = factor*self.lambda_s*np.matmul(self.y_ini.flatten().T,self.Y_p) # TODO: maybe -2
+        q_g_second_term = factor*self.lambda_g*self.g_r.T # TODO: maybe -2
         
         #print("q_u",np.shape(q_u))
         #print("q_y",np.shape(q_y))
@@ -338,6 +347,7 @@ class Controller:
     def getInputOutputPrediction(self):
         x0_result = self.solve_for_x_regularized()
         g = x0_result[self.T_f*self.input_size + self.T_f*self.output_size : ]
+        self.g = g
         u = x0_result[:self.T_f*self.input_size]
         u_star = np.reshape(np.matmul(self.U_f,g),(self.T_f,self.input_size))
         
@@ -470,14 +480,14 @@ class Controller:
         return H
 
     def test_g_validity(self):
-            u,y,g = self.getInputOutputPrediction()
-            two = np.reshape(np.matmul(self.U_f,g),(self.T_f,self.input_size))
-            three = np.reshape(np.matmul(self.Y_f,g),(self.T_f,self.output_size))
-            print("u by calculation:",two)
-            print("u by minimization:",u)
-
-            print("y by calculation:",three)
-            print("y by minimization:",y)
+            in_check = np.matmul(self.U_p,self.g) - self.u_ini
+            out_check = np.matmul(self.Y_p,self.g) - self.y_ini
+            print("Check: in",in_check,"\nCHeck out:",out_check,"\n")
+    
+    def check_data_sufficiency(self):
+        L = self.T_ini + self.T_f
+        if self.data_length <= ((self.input_size + 1)*L+1 ):
+            warnings.warn(str("\nData Lenglth not Sufficient. N_data("+str(self.data_length)+") !> (input_size("+str(self.input_size)+") + 1)*L("+str(L)+")+1"))
 
     def Init_u_y_ini(self):
         """
@@ -485,9 +495,9 @@ class Controller:
         sets u_ini and y_ini the last elements of input_sequence and output_sequence
         """
         for i in range(self.T_ini-1):
-            #self.u_ini = np.vstack((self.u_ini,self.input_sequence[self.data_length-self.T_ini+i]))
-            #self.y_ini = np.vstack((self.y_ini,self.output_sequence[self.data_length-self.T_ini+i]))
-            self.u_ini = np.vstack((self.u_ini,self.input_sequence[i]))
-            self.y_ini = np.vstack((self.y_ini,self.output_sequence[i]))
+            self.u_ini = np.vstack((self.u_ini,self.input_sequence[self.data_length-self.T_ini+i]))
+            self.y_ini = np.vstack((self.y_ini,self.output_sequence[self.data_length-self.T_ini+i]))
+            #self.u_ini = np.vstack((self.u_ini,self.input_sequence[i]))
+            #self.y_ini = np.vstack((self.y_ini,self.output_sequence[i]))
         #print("u_ini init:",np.shape(self.u_ini),self.u_ini,"T_ini:",self.T_ini)
         #print("y_ini init:",np.shape(self.y_ini),self.y_ini,"T_ini:",self.T_ini)

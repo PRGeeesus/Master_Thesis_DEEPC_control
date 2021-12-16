@@ -23,13 +23,15 @@ class Controller:
         self.out_constr_ub = np.array([np.inf for i in range(self.output_size)])
         self.in_constr_lb  = np.array([-np.inf for i in range(self.input_size)])
         self.in_constr_ub = np.array([np.inf for i in range(self.input_size)])
+        self.regularize = True
 
         self.settable_parameters = {"lambda_s":"weight of softned inital constraint",
                                     "lambda_g":"weight on regularization of",
                                     "out_constr_lb":"Lower Constraints bounds for Output",
                                     "out_constr_ub":"Upper Constraints bounds for Output",
                                     "in_constr_lb":"Lower Constraints bounds for Input",
-                                    "in_constr_ub":"Upper Constraints bounds for Input"}
+                                    "in_constr_ub":"Upper Constraints bounds for Input",
+                                    "regularize":"If Regularization should be allpied"}
         self.UnpackKWARGS(kwargs)
         
         self.data_length = len(data)
@@ -87,7 +89,7 @@ class Controller:
         self.y_len =  self.T_f*self.output_size
         self.g_len = len(self.input_sequence) - self.L
 
-        #self.x0 = np.full(((self.u_len + self.y_len + self.g_len)),init_value)
+        self.x0 = np.full(((self.u_len + self.y_len + self.g_len)),init_value)
 
         # for initalization make u and y ini the Tini last measurements
         # this will get updated once the Vehicle starts to produce its own data
@@ -105,8 +107,8 @@ class Controller:
         self.calculate_bounds_u_l()
         self.SolverSettings = {"warm_start" : False,
                                 "adaptive_rho" : False,
-                                "eps_rel": 0.001,
-                                "eps_abs": 0.0001,
+                                "eps_rel": 0.00001,
+                                "eps_abs": 0.00001,
                                 "max_iter": 10000,
                                 "verbose" :False}
         self.prob = osqp.OSQP() #sometimes there is ValueError: Workspace allocation error!
@@ -142,7 +144,7 @@ class Controller:
 
     def updateIOConstrains(self,input_lb,input_ub,output_lb,output_ub):
         def warning_mesg(in_out,lower_upper):
-            warnings.warn(in_out," constrains for the ",up_down," bound are not corrct Length. NOT Updated")
+            warnings.warn(in_out," constrains for the ",lower_upper," bound are not corrct Length. NOT Updated")
         if len(self.in_constr_lb) == len(input_lb):
             self.in_constr_lb = np.array(input_lb)
         else: warning_mesg("In","lower")
@@ -169,8 +171,8 @@ class Controller:
             Matrix of given shape.
         Notes
         -------
-        [Q] [0] [0] \n
-        [0] [R] [0] \n
+        [R] [0] [0] \n
+        [0] [Q] [0] \n
         [0] [0] [l_s * Y_p*Y_p + l_g * I]\n
 
         -------
@@ -178,7 +180,10 @@ class Controller:
         """
         P_u = np.kron(np.eye(self.T_f), self.R) 
         P_y = np.kron(np.eye(self.T_f), self.Q) 
-        P_g = self.lambda_s * np.matmul(self.Y_p.T,self.Y_p) + np.eye(self.g_len)*self.lambda_g 
+        #P_g = self.lambda_s * np.matmul(self.Y_p.T,self.Y_p) + np.eye(self.g_len)*self.lambda_g
+        P_g = np.zeros((self.g_len,self.g_len))
+        if self.regularize:
+           P_g = self.lambda_s * np.matmul(self.Y_p.T,self.Y_p)  + np.eye(self.g_len)*self.lambda_g
         #print("P_u shape :",np.shape(P_u))
         #print("P_y shape :",np.shape(P_y))
         #print("P_g shape :",np.shape(P_g),P_g)
@@ -210,32 +215,36 @@ class Controller:
             ->in update_y_r
             ->in update_in_out_measures
 
-        q = [u_r*R ... y_r*Q...(y_ini*Y_p + -gr^T)....] u      =  u_r*R*u  +  y_r*Q*y  +  y_ini*Y_p*g - gr*g
-                                                      y
-                                                      g
+        q = [-2u_r*R ... -2y_r*Q...(-2*l_d*y_ini*Y_p + -2*l_g*gr^T)....] u      =  u_r*R*u  +  y_r*Q*y  +  y_ini*Y_p*g - gr*g
+                                                        y
+                                                        g
+        FOR UREGULARIZED
+        q = [-2u_r*R ... -2y_r*Q...0....]               u             =  -u_r*R*u  +  -y_r*Q*y  +  0...
+                                                        y
+                                                        g
         """
-        factor = -2
-        temp1 = factor*np.matmul(self.R,np.array(self.u_r))# TODO: maybe -2
+        factor = -2 #TODO: -2 is the factor form the equation but is it eally needed?
+        temp1 = factor*np.matmul(np.array(self.u_r),self.R)
         q_u = temp1
         for i in range(1,self.T_f):
             q_u = np.hstack((temp1,q_u))
-        temp2 = factor*np.matmul(self.Q,np.array(self.y_r)) # TODO: maybe -2
+        temp2 = factor*np.matmul(np.array(self.y_r),self.Q) 
         q_y = temp2
         for i in range(1,self.T_f):
             q_y = np.hstack((temp2,q_y))
         #print(q_y)
         #print("self.y_ini",np.shape(self.y_ini)," self.Y_p",np.shape(self.Y_p))
         #print(np.shape(self.y_ini.flatten().T),np.shape(self.y_ini.flatten()))
-        q_g_first_term = factor*self.lambda_s*np.matmul(self.y_ini.flatten().T,self.Y_p) # TODO: maybe -2
-        q_g_second_term = factor*self.lambda_g*self.g_r.T # TODO: maybe -2
-        
+        q_g = np.zeros(self.g_len)
+        if self.regularize:
+            q_g_first_term = factor*self.lambda_s*np.matmul(self.y_ini.flatten().T,self.Y_p) 
+            q_g_second_term = factor*self.lambda_g*self.g_r.T 
+            q_g = q_g_first_term + q_g_second_term
         #print("q_u",np.shape(q_u))
         #print("q_y",np.shape(q_y))
         #print("q_g_first_term",np.shape(q_g_first_term))
         #print("q_g_second_term",np.shape(q_g_second_term))
 
-        q_g = q_g_first_term + q_g_second_term
-        
         q = np.hstack((q_u,q_y,q_g))
         #q = np.hstack((q_u,q))
         #print("q shape: ",np.shape(q))
@@ -247,7 +256,17 @@ class Controller:
        -1   0  Uf   u      -u + Uf*g     = 0
         0  -1  Yf   y   =  -y + Yf*g     = 0
         1   0  0    g       u             < u_upper   > u_lower
-        1   0  0            y             < y_upper   > y_lower
+        0   1  0            y             < y_upper   > y_lower
+        
+            A       x        l/u
+
+        FOR UNREGULARIZED:
+        0   0  Up               Up*g     = u_ini
+----->  0   0  Yp               Yp*g     = y_ini 
+       -1   0  Uf   u      -u + Uf*g     = 0
+        0  -1  Yf   y   =  -y + Yf*g     = 0
+        1   0  0    g       u             < u_upper   > u_lower
+        0   1  0            y             < y_upper   > y_lower
         
             A       x        l/u
 
@@ -264,8 +283,8 @@ class Controller:
         u_boundaries_4_1 = np.eye(self.input_size*self.T_f)
         u_bouds_zeros_4_2 = np.zeros((self.input_size*self.T_f,self.input_size*self.T_f))
 
-        y_boundaries_5_1 = np.eye(self.output_size*self.T_f)
-        y_bouds_zeros_5_2 = np.zeros((self.output_size*self.T_f,self.output_size*self.T_f))
+        y_boundaries_5_2 = np.eye(self.output_size*self.T_f)
+        y_bouds_zeros_5_1 = np.zeros((self.output_size*self.T_f,self.output_size*self.T_f))
 
         ZEROS_4_3 = np.zeros((self.input_size*self.T_f,(self.data_length - self.L)))
         ZEROS_5_3 = np.zeros((self.output_size*self.T_f,(self.data_length - self.L)))
@@ -273,24 +292,42 @@ class Controller:
         #print(np.shape(u_ZEROS_1_1),np.shape(y_ZEROS_1_2),np.shape(self.U_p))
         #print(np.shape(u_factor_2_1),np.shape(u_ZEROS_2_2),np.shape(self.U_f))
         #print(np.shape(y_ZEROS_3_1),np.shape(y_factor_3_2),np.shape(self.Y_f))
+        if self.regularize:
+            A = np.block([[u_ZEROS_1_1,y_ZEROS_1_2,self.U_p],
+                        [u_factor_2_1,u_ZEROS_2_2,self.U_f],
+                        [y_ZEROS_3_1,y_factor_3_2,self.Y_f],
+                        [u_boundaries_4_1,u_bouds_zeros_4_2,ZEROS_4_3],
+                        [y_bouds_zeros_5_1,y_boundaries_5_2,ZEROS_5_3]])
+        else:
+            #second line -> adds Y_p
+            A = np.block([[u_ZEROS_1_1,y_ZEROS_1_2,self.U_p],
+                          [u_ZEROS_1_1,y_ZEROS_1_2,self.Y_p],
+                          [u_factor_2_1,u_ZEROS_2_2,self.U_f],
+                          [y_ZEROS_3_1,y_factor_3_2,self.Y_f],
+                          [u_boundaries_4_1,u_bouds_zeros_4_2,ZEROS_4_3],
+                          [y_bouds_zeros_5_1,y_boundaries_5_2,ZEROS_5_3]])
 
-        A = np.block([[u_ZEROS_1_1,y_ZEROS_1_2,self.U_p],
-                      [u_factor_2_1,u_ZEROS_2_2,self.U_f],
-                      [y_ZEROS_3_1,y_factor_3_2,self.Y_f],
-                      [u_boundaries_4_1,u_bouds_zeros_4_2,ZEROS_4_3],
-                      [y_boundaries_5_1,y_bouds_zeros_5_2,ZEROS_5_3]])
-        A = sparse.csc_matrix(A)
+        A = sparse.csc_matrix(2*A)
         return A
 
     def calculate_bounds_u_l(self):
         """
-        upper and lwoer bound
+        upper and lower bound
         -------------------------
         0   0  Up           Up*g          = u_ini
         -1  0  Uf   u       -u + Uf*g     = 0
         0  -1  Yf   y   =   -y + Yf*g     = 0
         1   0  0    g       u             < u_upper   > u_lower
-        1   0  0            y             < y_upper   > y_lower
+        0   1  0            y             < y_upper   > y_lower
+        
+            A       x        l/u
+        FOR UNREGULARIZED:
+        0   0  Up               Up*g     = u_ini
+        0   0  Yp               Yp*g     = y_ini
+       -1   0  Uf   u      -u + Uf*g     = 0
+        0  -1  Yf   y   =  -y + Yf*g     = 0
+        1   0  0    g       u             < u_upper   > u_lower
+        0   1  0            y             < y_upper   > y_lower
         
             A       x        l/u
 
@@ -326,26 +363,21 @@ class Controller:
         #print(np.shape(ub_y),np.shape(ub_u))
         
         u_ini_flat = np.reshape(self.u_ini,(self.input_size*self.T_ini,1))
-        lb = np.vstack((u_ini_flat,u_zeros,y_zeros,lb_u,lb_y))
-        #lb = np.vstack((y_zeros,lb))
-        #lb = np.vstack((u_zeros,lb))
-        #lb = np.vstack((u_ini_flat,lb))
+        y_ini_flat = np.reshape(self.y_ini,(self.output_size*self.T_ini,1))
 
-        ub = np.vstack((u_ini_flat,u_zeros,y_zeros,ub_u,ub_y))
-        #ub = np.vstack((y_zeros,ub))
-        #ub = np.vstack((u_zeros,ub))
-        #ub = np.vstack((u_ini_flat,ub))
-
-        
-
-        #print("lb: ",np.shape(lb),lb)
-        #print("ub: ",np.shape(ub),ub)
+        if self.regularize:
+            lb = np.vstack((u_ini_flat,u_zeros,y_zeros,lb_u,lb_y))
+            ub = np.vstack((u_ini_flat,u_zeros,y_zeros,ub_u,ub_y))
+        else:
+            lb = np.vstack((u_ini_flat,y_ini_flat,u_zeros,y_zeros,lb_u,lb_y))
+            ub = np.vstack((u_ini_flat,y_ini_flat,u_zeros,y_zeros,ub_u,ub_y))
         
         self.ub = ub
         self.lb = lb
         
     def getInputOutputPrediction(self):
         x0_result = self.solve_for_x_regularized()
+        #x0_result = self.opt_solve_for_x()
         g = x0_result[self.T_f*self.input_size + self.T_f*self.output_size : ]
         self.g = g
         u = x0_result[:self.T_f*self.input_size]
@@ -361,24 +393,8 @@ class Controller:
 
 
         return u,y,u_star,y_star,g
-    
-    def test_erg(self,x_erg):
-        x0_result = x_erg
-        x0_t = x0_result
-        x0 = x0_result
-        x0_t = np.reshape(x0_t, (1,len(x_erg)))
-        x0 = np.reshape(x0_t, (len(x_erg),1))
-        TEMP_P = self.P.toarray()
-        #print("x0",np.shape(x0),type(x0))
-        #print("self.P",np.shape(TEMP_P),type(TEMP_P))
-        one = np.matmul(TEMP_P, x0)
-        one = np.matmul(x0_t,one)
 
-        two = np.matmul(self.q,x0_result)
-
-        print("xPx + xq = ",one," + ",two," = ",one+two)
-
-    def minFunction(self,x):
+    def opt_minFunction(self,x):
         x_ = np.asarray(x)
         temp = np.matmul(self.P.toarray(),x_)
         first_term = np.matmul(x_.T,temp)
@@ -389,7 +405,20 @@ class Controller:
     def solve_for_x_regularized(self):
         res = self.prob.solve()
         return res.x
-        
+    
+    def opt_solve_for_x(self):
+        #constr = opt.LinearConstraint(self.A.toarray(), self.lb, self.ub, keep_feasible=False)
+        # cons = ({'type': 'eq', 'fun': lambda x:  np.matmul(self.U_p,x[self.T_f*self.input_size + self.T_f*self.output_size :]) - self.u_ini},
+        #         {'type': 'eq', 'fun': lambda x:  np.matmul(self.U_f,x[self.T_f*self.input_size + self.T_f*self.output_size :]) - x[:self.T_f*self.input_size]},
+        #         {'type': 'eq', 'fun': lambda x: np.matmul(self.Y_f,x[self.T_f*self.input_size + self.T_f*self.output_size :]) - x[self.T_f*self.input_size : self.T_f*self.input_size + self.T_f*self.output_size]})
+        cons = ({'type': 'ineq', 'fun': lambda x:  np.matmul(self.A.toarray(),x).flatten()-self.lb.flatten()},
+                {'type': 'ineq', 'fun': lambda x:  self.ub.flatten() - np.matmul(self.A.toarray(),x).flatten()})
+        sol = opt.minimize(self.opt_minimizationFunction,self.x0,method="SLSQP",constraints=cons)
+        return sol.x
+    
+    def opt_minimizationFunction(self,x):
+        return  np.matmul(x,np.matmul(self.P.toarray(),np.transpose(x))) + np.matmul(self.q,x)
+
     def updateReferenceWaypoint(self,new_y_r):
         if len(new_y_r) != self.output_size:
             print("Wrong size for reference point. Must be: ",self.output_size,"\n")
@@ -420,7 +449,6 @@ class Controller:
             self.update_P()
             self.update_q()
     
-
     # call when changing y_r, u_r
     def recalculate_g_r(self):
         self.g_r = []
@@ -452,6 +480,8 @@ class Controller:
 
             print("Updating in: ",inp," out: ",outp)
 
+        #self.u_ini = np.vstack((new_input_measure,self.u_ini))
+        #self.y_ini = np.vstack((new_output_measures,self.y_ini))
         self.u_ini = np.vstack((self.u_ini,new_input_measure))
         self.y_ini = np.vstack((self.y_ini,new_output_measures))
 
@@ -482,7 +512,7 @@ class Controller:
     def test_g_validity(self):
             in_check = np.matmul(self.U_p,self.g) - self.u_ini
             out_check = np.matmul(self.Y_p,self.g) - self.y_ini
-            print("Check: in",in_check,"\nCHeck out:",out_check,"\n")
+            print("U_p*g - u_ini",in_check[0],"\nY_p*g - y_ini:",out_check[0],"\n")
     
     def check_data_sufficiency(self):
         L = self.T_ini + self.T_f

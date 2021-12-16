@@ -11,21 +11,22 @@ import matplotlib.pyplot as plt
 import random
 import DeePC_OSQP as C3
 import numpy as np
-from SimpleSystems import CessnaSystem, ChessnaMPCController, FederMasseSystem, InvertedPendulimSS, SimpleSystem1,SecondOrderSystem,QuadCopter,Chessna2
 import SimpleSystems
 import time
 from carlaHelper import readFromCSV
 import csv
+import time
 #import control
+from simple_pid import PID
 
 
 def main():
     system1 = SimpleSystem1(0,0,1)
     input = 0.5
-    for i in range(1,40):
+    for i in range(1,50):
         #system1.OneTick(input)
         system1.OneTick((random.random()-0.5)*2)
-        #system1.OneTick(random.random())
+        system1.OneTick(random.random())
         #system1.OneTick(np.abs(np.sin(i*0.1)))
     outputs = system1.SystemHistory[:,1]
     #plt.plot(outputs)
@@ -33,30 +34,30 @@ def main():
 
     original_data = outputs
 
-    T_ini =2# über 3 = schwingen, unter 3 = linearer
-    T_f = 7
-    Controller_settings = {"lambda_s":1,
+    T_ini =3# über 3 = schwingen, unter 3 = linearer
+    T_f = 10
+    Controller_settings = {"lambda_s":20,
                            "lambda_g":1,
-                    "out_constr_lb":[-20],
-                    "out_constr_ub":[20],
-                    "in_constr_lb":[-np.inf],
-                    "in_constr_ub":[np.inf]}
+                            "out_constr_lb":[-np.inf],
+                            "out_constr_ub":[np.inf],
+                            "in_constr_lb":[-1],
+                            "in_constr_ub":[1],
+                            "regularize":True}
 
     ctrl = C3.Controller(system1.SystemHistory,T_ini,T_f,1,1,**Controller_settings)
     SOLLWERT = 15
     ctrl.updateReferenceWaypoint([SOLLWERT])
     #ctrl.updateReferenceInput([0.5])
-    ctrl.updateIOConstrains([-1],[1],[-np.inf],[np.inf])
-   
+ 
     ctrl.updateControlCost_R([[1]]) # as I increase, only small changes in control
     ctrl.updateTrackingCost_Q([[1]]) #as I increase, prediction gets closer to SOLLWERT?
     #ctrl.updateReferenceInput([0.5])
     system1.resetSystem()
-    predictions_y = []
+    predictions_y = [0]
     applied_inputs = []
     soll = [SOLLWERT]
     u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
-    prediction = 0
+    prediction = 1
     control_input = 1
     for i in range(1,100):
         if i == 50:
@@ -72,11 +73,11 @@ def main():
         system_output = system1.OneTick(control_input)
         applied_inputs.append(system1.u)
         ctrl.updateIn_Out_Measures([control_input],[system_output])
-        ctrl.test_g_validity()
+        #ctrl.test_g_validity()
     
     outputs2 = system1.SystemHistory[:,1]
-    #print("u and y: ", [applied_inputs[i] for i in range(10)],
-    #                    [outputs2[i] for i in range(10)])
+    track_mean,track_std = SimpleSystems.Evaluate_Tracking_Accuarcy(outputs2,predictions_y)
+    control_mean,control_std = SimpleSystems.Evaluate_Control_Accuarcy(soll,outputs2)
 
     fig, ax1 = plt.subplots()
     titlesting = "T_ini:" + str(T_ini) + " T_f:" + str(T_f) +" lg:" + str(ctrl.lambda_g) + " ls:"+ str(ctrl.lambda_s)
@@ -97,8 +98,6 @@ def main():
     plt.legend(loc=4)
     plt.show()
 
-
-from simple_pid import PID
 def main2():
     SOLLWERT = 10
 
@@ -283,27 +282,38 @@ def main4():
     plt.legend(loc=4)
     plt.show()
 
-def main5():
-    system = InvertedPendulimSS()
-    input = [1]
-    for i in range(50):
-        out = system.OneTick(input)
-    print(np.shape(system.SystemHistory))
-    inputs = system.SystemHistory[:,0]
-    out_x = system.SystemHistory[:,1]
-    out_angle = system.SystemHistory[:,2]
+def InvertedPendulum_OnCart():
+    timestep = 0.1
+    simtime = 10
+    sys = SimpleSystems.InvertedPendulum_WithCart(timestep,10)
+    control = [0.2]
+    time = [0]
+    sys.getSystemresponse(control)
+    sys.updateSystem()
+    for i in range(int(simtime/timestep)):
+        control = sys.getControl()
+        sys.getSystemresponse(control)
+        sys.updateSystem()
+        time.append(i*timestep)
+        if sys.x0[0] > 10:
+            break
+    out_x = sys.out_x
+    out_angle = sys.out_angle
+    ins = sys.inputs
+
     fig, ax1 = plt.subplots()
-    titlesting = "Simple PID COntrol"
+    titlesting = "Inverted Pendulum"
     plt.title(titlesting)
     ax1.set_ylabel("Outputs")
-    ax1.plot(out_x,label="system out_x",c="g")
+    ax1.plot(time,out_x,label="system out x",c="g")
+    ax1.plot(time,out_angle,label="system out angle",c="r")
     plt.legend(loc=8)
     # ...
     ax2 = ax1.twinx()
     ax2.set_ylabel("Inputs")
-    ax2.plot(inputs,label="applied inputs",c="b")
+    ax2.plot(time,ins,label="Input Force",c="b")
     #ax2.plot(out_angle,label="system out_angle",c="r")
-    ax2.set_ylim([-2, 2])
+    #ax2.set_ylim([-2, 2])
 
     plt.legend(loc=4)
     plt.show()
@@ -340,8 +350,8 @@ def Chessna():
     plt.legend(loc=4)
     plt.show()
 
-def QuadCopter():
-    sys = Chessna2()
+def QuadCopter_system():
+    sys = QuadCopter(0.1)
 
     inputs = sys.inputs
     behaviour = sys.system_behaviour
@@ -352,7 +362,7 @@ def QuadCopter():
     plt.title(titlesting)
     ax1.set_ylabel("Altitide")
     #ax1.plot(time,predictions,label='ALt_Pred.',c="r")
-    ax1.plot(time,behaviour,label='behaviour',c="g")
+    ax1.plot(time,behaviour,label='z-height',c="g")
     #ax1.set_ylim([4500, 5500])
     plt.legend(loc=8)
     # ...
@@ -369,41 +379,120 @@ def Chessna_2():
 
     timesteps = 0.1
     sim_time = 10
+    SOLLWERT = 5020
     sys = Chessna2(timesteps,10)
     time = []
-    
+    soll = []
     for i in range(round(sim_time/timesteps)):
-
+        soll.append(SOLLWERT)
         time.append(i*timesteps)
         ctrl = sys.getControl()
         sys.getSystemresponse(ctrl)
         sys.updateSystem()
 
 
-    inputs = sys.inputs
-    altitude = sys.out_alt
+    inputs = np.asarray(sys.inputs)
+    inputs = np.reshape(sys.inputs,(len(sys.inputs),1))
+    altitude = np.reshape(sys.out_alt,(len(sys.out_alt),1))
+
     pitch_angle = sys.out_angle
 
+    data = np.hstack([inputs,altitude])
+    #print("Recorded data:",inputs,altitude)
+    #track_mean,track_std = SimpleSystems.Evaluate_Tracking_Accuarcy(altitude,predictions_y)
+    control_mean,control_std = SimpleSystems.Evaluate_Control_Accuarcy(soll,altitude)
 
     fig, ax1 = plt.subplots()
     titlesting = "Title"
     plt.title(titlesting)
     ax1.set_ylabel("Altitide")
-    #ax1.plot(time,predictions,label='ALt_Pred.',c="r")
-    ax1.plot(time,altitude,label='altitude',c="b")
+    ax1.plot(time,soll,label='Sollwert.',c="y")
+    ax1.plot(time,altitude,label='Altitude',c="g")
     #ax1.set_ylim([4500, 5500])
     plt.legend(loc=8)
     # ...
     ax2 = ax1.twinx()
-    ax2.set_ylabel(" angle")
-    ax2.step(time,inputs,label="applied inputs",c="g")
-    ax2.plot(time,pitch_angle,label="output pitchangle",c="r")
+    ax2.set_ylabel("angle")
+    ax2.step(time,inputs*sys.factor_rad_to_deg,label="applied inputs",c="b")
+    #ax2.plot(time,pitch_angle,label="output pitchangle",c="r")
     #ax2.set_ylim([-30, 30])
 
     plt.legend(loc=4)
     plt.show()
 
-import time
+    ### DEEPC PART:
+    T_ini = 3
+    T_f = 10
+    settings = {"lambda_s":100,
+                "lambda_g":1,
+                "out_constr_lb":[0],
+                "out_constr_ub":[6000],
+                "in_constr_lb":[-15*sys.factor_deg_to_rad],
+                "in_constr_ub":[15*sys.factor_deg_to_rad]}
+
+    ctrl = C3.Controller(data,T_ini,T_f,1,1,**settings)
+    SOLLWERT = 5020.0
+    ctrl.updateReferenceWaypoint([SOLLWERT])
+    #ctrl.updateReferenceInput([0.5])
+    ctrl.updateControlCost_R([[1]])
+    ctrl.updateTrackingCost_Q([[1]])
+    #ctrl.updateReferenceInput([0.5])
+    sys.resetSystem()
+
+    predictions_y = []
+    soll = []
+    timeline = []
+    #pid = PID(0.9, 10, 0.1, setpoint=SOLLWERT)
+    #pid.output_limits = (-5.0, 5.0)
+    #pid.sample_time = 0.005
+    Control_input = 1.0*sys.factor_deg_to_rad
+    prediction = 0
+    
+    for i in range(0,100):
+        timeline.append(i)
+        if i > T_ini +3:
+            u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
+            Control_input = u[0][0]
+            prediction = y_star[0][0]
+        #print(u,u_star)
+        #control = pid(sys.out_pos[-1])
+        soll.append(SOLLWERT)
+        applied_input = Control_input
+        system_output = sys.getSystemresponse([applied_input])
+        predictions_y.append(prediction)
+        ctrl.updateIn_Out_Measures([applied_input],[system_output[0]])
+        #ctrl.updateReferenceInput([applied_input])
+        #ctrl.test_g_validity()
+    
+    inputs = np.asarray(sys.inputs)
+    inputs = np.reshape(sys.inputs,(len(sys.inputs),1))
+    altitude = np.reshape(sys.out_alt,(len(sys.out_alt),1))
+    #print("u and y: ", [applied_inputs[i] for i in range(10)],
+    #                    [outputs2[i] for i in range(10)])
+    track_mean,track_std = SimpleSystems.Evaluate_Tracking_Accuarcy(altitude,predictions_y)
+    control_mean,control_std = SimpleSystems.Evaluate_Control_Accuarcy(soll,altitude)
+
+
+    fig, ax1 = plt.subplots()
+    titlesting = "DEEPC CONTROLLED to " + str(SOLLWERT) + ""
+    plt.title(titlesting)
+    ax1.set_ylabel("Outputs")
+    #ax1.plot(data[:,1],label='Init Data')
+    ax1.plot(timeline,soll,label='SOLLWERT',c="y")
+    ax1.plot(timeline,predictions_y,label='Predictions',c="r")
+    ax1.plot(timeline,altitude,label="Altitude",c="g")
+    
+    plt.legend(loc=8)
+    # ...
+    ax2 = ax1.twinx()
+    ax2.set_ylabel("Inputs")
+    ax2.plot(timeline,inputs*sys.factor_rad_to_deg,label="applied inputs",c="b")
+    #ax2.plot(data[:,0],label='Init inputs')
+    #ax2.set_ylim([-7, 7])
+
+    plt.legend(loc=4)
+    plt.show()
+
 def FederMasse():
     timesteps = 1
     sim_time = 200
@@ -447,19 +536,19 @@ def FederMasse():
     #### DEEPC PREDICTION PART
     T_ini = 3
     T_f = 10
-    settings = {"lambda_s":1,
+    settings = {"lambda_s":10,
                 "lambda_g":1,
-                "out_constr_lb":[-20],
-                "out_constr_ub":[20],
-                "in_constr_lb":[-np.inf],
-                "in_constr_ub":[np.inf]}
+                "out_constr_lb":[-np.inf],
+                "out_constr_ub":[np.inf],
+                "in_constr_lb":[-20],
+                "in_constr_ub":[20]}
 
     ctrl = C3.Controller(data,T_ini,T_f,1,1,**settings)
     SOLLWERT = 5
     ctrl.updateReferenceWaypoint([SOLLWERT])
     #ctrl.updateReferenceInput([0.5])
     ctrl.updateControlCost_R([[1]])
-    ctrl.updateTrackingCost_Q([[1]])
+    ctrl.updateTrackingCost_Q([[3]])
     #ctrl.updateReferenceInput([0.5])
     sys.resetSystem()
 
@@ -470,17 +559,16 @@ def FederMasse():
     #pid = PID(0.9, 10, 0.1, setpoint=SOLLWERT)
     #pid.output_limits = (-5.0, 5.0)
     #pid.sample_time = 0.005
-    Control_input = 2
+    Control_input = 0
     prediction = 0
     u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
     for i in range(0,200): 
-        if i == 50:
+        if i == 80:
             SOLLWERT = -5
             ctrl.updateReferenceWaypoint([SOLLWERT])
         #     #pid.setpoint = SOLLWERT
         timeline.append(i)
         if i > 20:
-            Control_input
             u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
             Control_input = u[0][0]
             prediction = y_star[0][0]
@@ -489,24 +577,19 @@ def FederMasse():
         soll.append(SOLLWERT)
         applied_input = Control_input
         system_output = sys.OneTick(applied_input)
-        #system_output = sys.OneTick(control)
         predictions_y.append(prediction)
         applied_inputs.append(applied_input)
-        #applied_inputs.append(control)
         ctrl.updateIn_Out_Measures([applied_input],[system_output])
         ctrl.updateReferenceInput([applied_input])
-        ctrl.test_g_validity()
+        #ctrl.test_g_validity()
     
     inputs = sys.in_force
     x_out = sys.out_pos
     #print("u and y: ", [applied_inputs[i] for i in range(10)],
     #                    [outputs2[i] for i in range(10)])
-    ctrl_accuary_mean,ctrl_accuary_std = SimpleSystems.Evaluate_Control_Accuarcy(soll,x_out)
-    predict_accuary_mean,predict_accuary_std = SimpleSystems.Evaluate_Tracking_Accuarcy(x_out, predictions_y)
-    print("ctrl_accuary_mean:",ctrl_accuary_mean,"\n")
-    print("ctrl_accuary_std:",ctrl_accuary_std,"\n")
-    print("predict_accuary_mean:",predict_accuary_mean,"\n")
-    print("predict_accuary_std:",predict_accuary_std,"\n")
+    track_mean,track_std = SimpleSystems.Evaluate_Tracking_Accuarcy(x_out,predictions_y)
+    control_mean,control_std = SimpleSystems.Evaluate_Control_Accuarcy(soll,x_out)
+
 
     fig, ax1 = plt.subplots()
     titlesting = "DEEPC CONTROLLED to " + str(SOLLWERT) + ""
@@ -537,11 +620,13 @@ def ControlWithPID():
 #main5()
 #main3()
 #main4()
-main()
+#main()
 #main2()
 #Chessna()
 #Chessna_2()
 #FederMasse()
+#QuadCopter_system()
+InvertedPendulum_OnCart()
 
 
 

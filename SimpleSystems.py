@@ -1,6 +1,7 @@
 import time
 import numpy as np
 import csv
+from numpy.lib.histograms import histogram_bin_edges
 
 class SimpleSystem1:
     def __init__(self,x_0,y_0,gain):
@@ -278,31 +279,6 @@ class InvertedPendulimSS():
 
 import math
 
-# Tiefpass 2. Ordnung
-class SecondOrderSystem: 
-    def __init__(self, d1, d2):
-        if d1 > 0:
-            e1 = -1.0 / d1
-            x1 = math.exp(e1)
-        else: x1 = 0
-        if d2 > 0:
-            e2 = -1.0 / d2
-            x2 = math.exp(e2)
-        else: x2 = 0
-        a = 1.0 - x1    # b = x1
-        c = 1.0 - x2    # d = x2
-        self.ac = a * c
-        self.bpd = x1 + x2
-        self.bd = x1 * x2
-        self.Yppr = 0
-        self.Ypr = 0
- 
-    def __call__(self, X): 
-        Y = self.ac * X + self.bpd * self.Ypr - self.bd * self.Yppr
-        self.Yppr = self.Ypr
-        self.Ypr = Y
-        return Y
-
 import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
@@ -344,10 +320,9 @@ class FederMasseSystem:
         y = np.matmul(self.C,self.x0)
         return y
 
-
 class QuadCopter():
-    def __init__(self):
-
+    def __init__(self,t_s):
+        self.TIMESTEP = t_s
         Ad = sparse.csc_matrix([
             [1.,      0.,     0., 0., 0., 0., 0.1,     0.,     0.,  0.,     0.,     0.    ],
             [0.,      1.,     0., 0., 0., 0., 0.,      0.1,    0.,  0.,     0.,     0.    ],
@@ -424,7 +399,7 @@ class QuadCopter():
         prob = osqp.OSQP()
 
         # Setup workspace
-        prob.setup(P, q, A, l, u, warm_start=True)
+        prob.setup(P, q, A, l, u, warm_start=True,verbose = False)
 
         # Simulate in closed loop
         nsim = 15
@@ -503,14 +478,14 @@ class Chessna2():
         # Initial and reference states
         #self.x0 = np.zeros(nx)
         self.x0 = np.array([0.,0.,0.,5000.,])
-        xr = np.array([0.,0.,0.,5020.,])
+        self.xr = np.array([0.,0.,0.,5020.,])
 
         # Cast MPC problem to a QP: x = (x(0),x(1),...,x(N),u(0),...,u(N-1))
         # - quadratic objective
         P = sparse.block_diag([sparse.kron(sparse.eye(N), Q), QN,
                             sparse.kron(sparse.eye(N), R)], format='csc')
         # - linear objective
-        q = np.hstack([np.kron(np.ones(N), -Q.dot(xr)), -QN.dot(xr),
+        q = np.hstack([np.kron(np.ones(N), -Q.dot(self.xr)), -QN.dot(self.xr),
                     np.zeros(N*nu)])
         # - linear dynamics
         Ax = sparse.kron(sparse.eye(N+1),-sparse.eye(nx)) + sparse.kron(sparse.eye(N+1, k=-1), self.Ad)
@@ -553,6 +528,14 @@ class Chessna2():
         self.inputs = []
         self.time = []
 
+    def resetSystem(self):
+        self.out_alt = []
+        self.out_angle = []
+        self.inputs = []
+        self.time = []
+        self.x0 = np.array([0.,0.,0.,5000.,])
+        self.xr = np.array([0.,0.,0.,5020.,])
+
 
     def getControl(self):
         res = self.prob.solve()
@@ -566,18 +549,147 @@ class Chessna2():
         return ctrl
 
     def getSystemresponse(self,ctrl):
-        self.x0 =  (self.Ad.dot(self.x0) + self.Bd.dot(ctrl))
+        #ctrl = np.reshape(ctrl,(len(ctrl),1))
+        self.x0 =  (self.Ad.dot(self.x0) + self.Bd*ctrl)
 
         y = self.Cd.dot(self.x0)
-        #self.x0 = x_next
-        self.inputs.append(ctrl*self.factor_rad_to_deg)
+
+        #self.inputs.append(ctrl[0]*self.factor_rad_to_deg)
+        self.inputs.append(ctrl[0])
         self.out_alt.append(y[1])
         self.out_angle.append(y[0])
+        return y
         
     def updateSystem(self):
         self.l[:self.nx] = -self.x0
         self.u[:self.nx] = -self.x0
         self.prob.update(l=self.l, u=self.u)
+
+class InvertedPendulum_WithCart():
+    def __init__(self,timestep,horizon) -> None:
+        self.TIMESTEP = timestep
+        self.HORIZON_N_SEC = horizon
+        # System matrices
+        # https://lost-contact.mit.edu/afs/umich.edu/class/ctms/Public/html/examples/pend/invpen.htm
+        # https://lost-contact.mit.edu/afs/umich.edu/class/ctms/Public/html/examples/pend/invss.htm
+        self.A_raw = np.array([[0, 1, 0, 0],
+                      [0, -0.1818, 2.6727, 0],
+                      [0, 0, 0, 1],
+                      [0, -0.4545, 31.1818, 0]])
+
+        self.B_raw = np.array([[0], [1.8182],[0],[4.5455]])
+        self.C_raw = np.array([[1, 0,0,0],[0, 0,1,0]])
+        
+        self.Ad = sparse.csc_matrix(self.A_raw)
+        self.Bd = sparse.csc_matrix(self.B_raw)*self.TIMESTEP
+
+        self.factor_deg_to_rad = (np.pi/180)
+        self.factor_rad_to_deg = (180/np.pi)
+        self.Cd = sparse.csc_matrix(self.C_raw)
+        [nx, nu] = self.Bd.shape
+        self.nx = nx
+        self.nu = nu
+        self.Ad =  self.Ad*self.TIMESTEP + sparse.eye(nx)
+        # Prediction horizon
+        N = self.HORIZON_N_SEC
+        self.N = N
+
+        # Constraints
+
+        u0 = 0
+        umin = np.array([-10])
+        umax = np.array([10])
+        xmin = np.array([-90*self.factor_deg_to_rad,-90*self.factor_deg_to_rad,-90*self.factor_deg_to_rad, -90*self.factor_deg_to_rad])
+        #xmax = np.array([np.inf, 0.349,  np.inf, np.inf])
+        xmax = xmin*-1
+        # Objective function
+        Q = sparse.diags([1., 1., 1., 1.])
+        QN = Q*10
+        R = sparse.diags([1.])
+
+        # Initial and reference states
+        self.x0 = np.zeros(nx)
+        self.xr = np.array([1,0,0,0])
+
+        # Cast MPC problem to a QP: x = (x(0),x(1),...,x(N),u(0),...,u(N-1))
+        # - quadratic objective
+        P = sparse.block_diag([sparse.kron(sparse.eye(N), Q), QN,
+                            sparse.kron(sparse.eye(N), R)], format='csc')
+        # - linear objective
+        q = np.hstack([np.kron(np.ones(N), -Q.dot(self.xr)), -QN.dot(self.xr),
+                    np.zeros(N*nu)])
+        # - linear dynamics
+        Ax = sparse.kron(sparse.eye(N+1),-sparse.eye(nx)) + sparse.kron(sparse.eye(N+1, k=-1), self.Ad)
+        Bu = sparse.kron(sparse.vstack([sparse.csc_matrix((1, N)), sparse.eye(N)]), self.Bd)
+        Aeq = sparse.hstack([Ax, Bu])
+        leq = np.hstack([-self.x0, np.zeros(N*nx)])
+        ueq = leq
+        # - input and state constraints
+        Aineq = sparse.eye((N+1)*nx + N*nu)
+
+        # add the input constrain for deltau
+        # delta_x = sparse.kron(sparse.eye(N+1),np.zeros((nu,nx)))
+        # delta_u = -sparse.eye(N)+sparse.eye(N, k=1)
+        # delta_u = sparse.vstack([sparse.csc_matrix((1, N)), delta_u])
+        # A_delta = sparse.hstack([delta_x, delta_u])
+        
+
+        lineq = np.hstack([np.kron(np.ones(N+1), xmin), np.kron(np.ones(N), umin)])
+        uineq = np.hstack([np.kron(np.ones(N+1), xmax), np.kron(np.ones(N), umax)])
+
+        # delta u constraints
+        
+        # - OSQP constraints
+        A = sparse.vstack([Aeq, Aineq], format='csc')
+        self.l = np.hstack([leq, lineq])
+        self.u = np.hstack([ueq, uineq])
+
+        # Create an OSQP object
+        self.prob = osqp.OSQP()
+
+        self.prob.setup(P, q, A, self.l, self.u,adaptive_rho = False, warm_start=False,verbose = False)
+
+        # RECORD DATA
+        self.out_x = []
+        self.out_angle = []
+        self.inputs = []
+
+
+    def resetSystem(self):
+        self.out_x = []
+        self.out_angle = []
+        self.inputs = []
+        self.x0 = np.zeros(self.nx)
+    
+    def setReference(self,xr):
+        self.xr = xr
+
+    def getControl(self):
+        res = self.prob.solve()
+        # Check solver status
+        if res.info.status != 'solved':
+            raise ValueError('OSQP did not solve the problem!')
+
+        # Apply first control input to the plant
+        ctrl = res.x[-self.N*self.nu:-(self.N-1)*self.nu]
+        return ctrl
+    def getSystemresponse(self,ctrl):
+        #ctrl = np.reshape(ctrl,(len(ctrl),1))
+        self.x0 =  (self.Ad.dot(self.x0) + self.Bd*ctrl)
+
+        y = self.Cd.dot(self.x0)
+
+        #self.inputs.append(ctrl[0]*self.factor_rad_to_deg)
+        self.inputs.append(ctrl[0])
+        self.out_x.append(y[0])
+        self.out_angle.append(y[1])
+        return y
+    def updateSystem(self):
+        self.l[:self.nx] = -self.x0
+        self.u[:self.nx] = -self.x0
+        self.prob.update(l=self.l, u=self.u)
+    
+
 
 def saveAsCSV(filename,data):
     print(len(data)," datapoints collected")
@@ -596,23 +708,28 @@ def readFromCSV(filename):
 # mean between prediction and actual system output
 def Evaluate_Tracking_Accuarcy(system_output,controller_prediction):
     if len(system_output) != len(controller_prediction):
-        print("Can not evaluate Tracking AAAccuary. Unequal array sizes")
+        print("Can not evaluate Tracking AAAccuary. Unequal array sizes",np.shape(system_output),np.shape(controller_prediction))
+        return 0,0
     else:
         difference = []
         for i in range(len(system_output)):
             difference.append(np.abs(system_output[i] - controller_prediction[i]))
         mean = np.mean(difference)
         stddev = np.std(difference)
+    print("Prediction to output mean:",'%.3f'%mean,"std",'%.3f'%stddev,"End difference:",'%.3f'%(system_output[-1]-controller_prediction[-1]))
     return mean, stddev
 
 # mean between soll and system state
 def Evaluate_Control_Accuarcy(sollwert,system_output):
     if len(sollwert) != len(system_output):
-        print("Can not evaluate Tracking AAAccuary. Unequal array sizes")
+        print("Can not evaluate Tracking AAAccuary. Unequal array sizes",np.shape(sollwert),np.shape(system_output))
     else:
         difference = []
         for i in range(len(system_output)):
             difference.append(np.abs(sollwert[i] - system_output[i]))
         mean = np.mean(difference)
         stddev = np.std(difference)
+    print("Soll zu output mean:",'%.3f'%mean,"std",'%.3f'%stddev,"End difference:",'%.3f'%(sollwert[-1]-system_output[-1]))
     return mean, stddev
+
+

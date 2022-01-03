@@ -690,7 +690,6 @@ class InvertedPendulum_WithCart():
         self.prob.update(l=self.l, u=self.u)
     
 
-
 def saveAsCSV(filename,data):
     print(len(data)," datapoints collected")
     print("Saving recorded data in csv file: " + filename + ".csv")

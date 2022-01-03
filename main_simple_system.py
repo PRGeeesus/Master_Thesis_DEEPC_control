@@ -18,6 +18,7 @@ import csv
 import time
 #import control
 from simple_pid import PID
+import SimpleSystemsAnimations	
 
 
 def main():
@@ -617,6 +618,14 @@ def ControlWithPID():
     pid.sample_time = 0.00
     control = pid(system_output)
 
+def PendulumWithCart_Animated():
+    cart_animation = SimpleSystemsAnimations.PendulumAnimation()
+    x = 0
+    while True:
+
+        cart_animation.updateAnimation(x,1)
+        x += 1
+
 #main5()
 #main3()
 #main4()
@@ -626,7 +635,8 @@ def ControlWithPID():
 #Chessna_2()
 #FederMasse()
 #QuadCopter_system()
-InvertedPendulum_OnCart()
+#InvertedPendulum_OnCart()
+PendulumWithCart_Animated()
 
 
 

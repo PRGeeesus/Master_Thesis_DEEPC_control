@@ -1,0 +1,3 @@
+Attribute : value
+Controller init data length:49
+Controller input size:1Controller output size:1Controller lambda_s:20Controller lambda_g:10

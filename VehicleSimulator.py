@@ -6,12 +6,13 @@ import matplotlib.pyplot as plt
 
 
 class Simulator:
-    def __init__(self,Vehicle_start_pt):
+    def __init__(self,Vehicle_start_pt,input_size, output_size):
+        
         self.actor_list = [] # store everything that has to be destroyed
-        self.input_history = np.array([0,0,0])
-        self.output_history = np.array([0,0,0])
-        self.prediction_history = np.array([0,0,0])
-        self.reference_history = np.array([0,0,0])
+        self.input_history = np.array([0 for i in range(input_size)])
+        self.output_history = np.array([0 for i in range(output_size)])
+        self.prediction_history = np.array([0 for i in range(output_size)])
+        self.reference_history = np.array([0 for i in range(output_size)])
 
         self.Crossing_1_offset_x = 10
         self.Crossing_1_offset_y = -60
@@ -48,7 +49,7 @@ class Simulator:
             self.Vehicle = temp
             self.offset = [self.starting_x,self.starting_y,0.0]
             print("Starting Pos of Car:",self.starting_x,self.starting_y)
-            print("Corrected Starting Pos of Car:",self.starting_x-self.starting_x,self.starting_y-self.starting_y)
+            print("Corrected Starting Pos of Car:")
             self.start_time_ns = time.time_ns()
             self.Initalized = True
 
@@ -111,7 +112,7 @@ class Simulator:
     def DrawPredictionPoint(self,predictions):
         cHelper.drawWaypoints([predictions],self.world,[0,0,255],1.0,self.offset)
 
-    def UpdateRecordingData(self,reference,inpuuut,prediction,output):
+    def UpdateRecordingData(self,reference,inpuuut,output,prediction):
         self.prediction_history = np.vstack((self.prediction_history,prediction))
         self.reference_history = np.vstack((self.reference_history,reference))
         self.input_history = np.vstack((self.input_history,inpuuut))
@@ -128,17 +129,17 @@ class Simulator:
         ax1.set_ylabel("Outputs")
 
         ax1.plot(self.output_history[:,0],label='x',linewidth=3,c="r")
-        ax1.plot(self.output_history[:,1],label='y',linewidth=3,c="c")
+        #ax1.plot(self.output_history[:,1],label='y',linewidth=3,c="c")
         ax1.plot(self.reference_history[:,0],label='x_ref',c="k",linewidth=3)
-        ax1.plot(self.reference_history[:,1],label='y_ref',c="b",linewidth=3)
-        #ax1.plot(predictions_y,label='predictions',c="r")
+        #ax1.plot(self.reference_history[:,1],label='y_ref',c="b",linewidth=3)
+        ax1.plot(self.prediction_history[:,0],label='predictions',c="r")
         #ax1.plot(outputs2,label="system behaviour",c="g")
         plt.legend(loc=8)
         # ...
         ax2 = ax1.twinx()
         ax2.set_ylabel("Inputs")
         ax2.plot(self.input_history[:,0],label='throttle',c="y",linewidth=3)
-        ax2.plot(self.input_history[:,1],label='steer',c="lime",linewidth=3)
+        #ax2.plot(self.input_history[:,1],label='steer',c="lime",linewidth=3)
         ax2.set_ylim([-2, 2])
         plt.legend(loc=4)
         plt.show()

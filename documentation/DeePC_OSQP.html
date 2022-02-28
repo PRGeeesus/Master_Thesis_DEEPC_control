@@ -1,0 +1,2127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.10.0" />
+<title>DeePC_OSQP API documentation</title>
+<meta name="description" content="Author: Martin Buchschuster
+In the scope of a Master Thesis for the Course: Robotics and Autonomous Systems
+Start Date: 1.10.2021
+Run with …" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>DeePC_OSQP</code></h1>
+</header>
+<section id="section-intro">
+<h6 id="_1"></h6>
+<p>Author: Martin Buchschuster
+In the scope of a Master Thesis for the Course: Robotics and Autonomous Systems</p>
+<h1 id="_2"></h1>
+<h1 id="start-date-1102021">Start Date: 1.10.2021</h1>
+<h1 id="run-with-python-version-373">Run with Python version 3.7.3</h1>
+<h1 id="_3"></h1>
+<h1 id="_4"></h1>
+<h1 id="contact-martinbuchschusterde">contact: martin@buchschuster.de</h1>
+<h6 id="_5"></h6>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">&#34;&#34;&#34;
+###########################################################################
+Author: Martin Buchschuster
+In the scope of a Master Thesis for the Course: Robotics and Autonomous Systems
+#
+# Start Date: 1.10.2021
+# Run with Python version 3.7.3 
+#  
+#
+# contact: martin@buchschuster.de
+############################################################################
+
+&#34;&#34;&#34;
+#for documentation styling https://docutils.sourceforge.io/docs/ref/rst/directives.html#math
+# https://pdoc3.github.io/pdoc/doc/pdoc/#gsc.tab=0
+
+from numpy.core.defchararray import _use_unicode
+import osqp
+import sys
+import time
+import numpy as np
+import scipy.optimize as opt
+from scipy import sparse
+import warnings
+import csv
+
+class Controller:
+    &#34;&#34;&#34;
+    .. important::
+        This class handels Everything
+    Args:
+        @data:[[in_1, in_2, ..., in_n,out_1,out_2,...,out_m],
+        t+1 -&gt;[in_1, in_2, ..., ...]
+        t+2 -&gt;[in_1, in_2, ..., ]]\n
+        @T_ini: size of the past time frame\n
+        @T_f  : size of future Time frame\n
+        @input_size: # inputs per timestep. (also n)\n
+        @output_size: # outputs per timestep. (also m)\n
+        @**kwargs   : settings -&gt; see doc for information\n
+    Returns:
+        An Object of type &lt;Controller&gt;
+    &#34;&#34;&#34;
+    def __init__(self,data,T_ini,T_f,input_size,output_size,**kwargs):
+        self.input_size = input_size
+        self.output_size = output_size
+
+        ### These are all the Parameters that can be set With the **kwargs
+        self.lambda_s = 1 #weight of softned inital constraint = 750,000,000
+        self.lambda_g = 1 #weight on regularization of g = 500
+        self.out_constr_lb = np.array([-np.inf for i in range(self.output_size)])
+        self.out_constr_ub = np.array([np.inf for i in range(self.output_size)])
+        self.in_constr_lb  = np.array([-np.inf for i in range(self.input_size)])
+        self.in_constr_ub = np.array([np.inf for i in range(self.input_size)])
+        self.regularize = True
+
+        self.settable_parameters = {&#34;lambda_s&#34;:&#34;weight of softned inital constraint&#34;,
+                                    &#34;lambda_g&#34;:&#34;weight on regularization of&#34;,
+                                    &#34;out_constr_lb&#34;:&#34;Lower Constraints bounds for Output&#34;,
+                                    &#34;out_constr_ub&#34;:&#34;Upper Constraints bounds for Output&#34;,
+                                    &#34;in_constr_lb&#34;:&#34;Lower Constraints bounds for Input&#34;,
+                                    &#34;in_constr_ub&#34;:&#34;Upper Constraints bounds for Input&#34;,
+                                    &#34;regularize&#34;:&#34;If Regularization should be allpied&#34;}
+        self.UnpackKWARGS(kwargs)
+        self.data_length = len(data)
+        self.data = np.asarray(data)
+
+        if len(self.data[0]) != (input_size + output_size):
+            print(&#34;initalization data dimenstion does not match iniatlized in/out sizes: &#34;,len(self.data[0]),&#34; != &#34;,input_size,&#34; + &#34;,output_size)
+
+        self.T_ini = T_ini
+        self.T_f = T_f
+        self.L = self.T_ini + self.T_f
+
+        self.check_data_sufficiency() # checks for T &gt; (m+1)*L+1
+
+
+        # defines:
+        self.u_r = np.array([0.0 for i in range(self.input_size)]) # steady state reference inout is no throttle, steer or brake
+        self.y_r = np.array([0.0 for i in range(self.output_size)]) # steady state reference output should probably be the reference waypoint I want to reach ?
+
+        
+        self.Q = np.eye(self.output_size) # quardatic tracking effort cost
+        #self.Q = np.asarray([[1,0,0],[0,1,0],[0,0,1]])
+        self.R = np.eye(self.input_size) #quardatic control effort cost
+        #self.R = np.asarray([[1,0,0],[0,1,0],[0,0,1]])
+        
+        # data is in the form:
+        #[throttle,steer,brake,car-x,car-y,car-yaw]
+        #[u1,u2,u3, y1,y2,y3]
+        self.output_sequence = self.data[:,self.input_size:self.output_size + self.input_size]# y
+        self.input_sequence =  self.data[:,:self.input_size] # u
+
+
+        #to be updated as the controller runs:
+        self.y_ini = np.zeros((self.output_size)) # T_ini most recent input/output measures
+        self.u_ini = np.zeros((self.input_size))
+        self._Init_u_y_ini() # sets the last few datapoints from output_sequence and input_sequence
+
+ 
+        self.U_p_f = self.generateHankel_Collums(self.L,self.input_sequence)
+        self.U_p = self.U_p_f[:self.T_ini*self.input_size,:] 
+        self.U_f = self.U_p_f[self.L*self.input_size-self.T_f*self.input_size:,:]
+
+        self.Y_p_f = self.generateHankel_Collums(self.L,self.output_sequence)
+        self.Y_p = self.Y_p_f[:self.T_ini*self.output_size,:] 
+        self.Y_f = self.Y_p_f[self.L*self.output_size-self.T_f*self.output_size:,:]
+
+        # these are only needed for Regularization:
+        self.g_r = []
+        self.recalculate_g_r()
+
+
+        # all the initalization for the SOlver:
+        init_value = 0.0
+        self.u_len = self.T_f*self.input_size
+        self.y_len =  self.T_f*self.output_size
+        self.g_len = len(self.input_sequence) - self.L
+
+        self.x0 = np.full(((self.u_len + self.y_len + self.g_len)),init_value)
+
+        # for initalization make u and y ini the Tini last measurements
+        # this will get updated once the Vehicle starts to produce its own data
+        
+        # for i in range(self.T_ini):
+        #     #self.updateIn_Out_Measures(self.input_sequence[self.data_length-1 - self.T_ini + i], self.output_sequence[self.data_length-1 - self.T_ini + i])
+        #     idx = len(self.input_sequence) - self.T_ini 
+        #     self.updateIn_Out_Measures(self.input_sequence[idx-1], self.output_sequence[idx-1])
+        
+        # these nees y_ini and u_ini to be filled corretly by the above code
+        self.P = self.calculate_P()
+        self.q = self.calculate_q()
+        self.A = self.calculate_A()
+        
+        self.calculate_bounds_u_l()
+        self.SolverSettings = {&#34;warm_start&#34; : False,
+                                &#34;adaptive_rho&#34; : False,
+                                &#34;eps_rel&#34;: 0.00001,
+                                &#34;eps_abs&#34;: 0.00001,
+                                &#34;max_iter&#34;: 10000,
+                                &#34;verbose&#34; :False}
+                                
+        self.prob = osqp.OSQP() #sometimes there is ValueError: Workspace allocation error!
+        self.prob.setup(self.P, self.q, self.A, l = self.lb, u = self.ub,**self.SolverSettings) 
+
+
+    # TODO: this is not nice, check if variables are same type and same LENGTH!
+    def UnpackKWARGS(self,keyword_arguments_list):
+        &#34;&#34;&#34;
+        This function unpack the **kwargs that are passed upon initialization and sets them
+        if they are not already attributes.
+        &#34;&#34;&#34;
+
+        for key in keyword_arguments_list:
+            temp = getattr(self,key,None)
+            if temp is not None and key in self.settable_parameters:
+                setattr(self,key,keyword_arguments_list[key])
+            else:
+                print(&#34;Warning: Trying to set Parameter&#34;,key,&#34;, but it does not exitst! Settable parameters are:\n&#34;)
+                for key in self.settable_parameters:
+                    print(key,&#34;: &#34;,self.settable_parameters[key])
+                print(&#34;\n&#34;)
+
+    def ProblemSetup(self):
+        self.prob = osqp.OSQP()
+        self.prob.setup(self.P, self.q, self.A, l = self.lb, u = self.ub,**self.SolverSettings) 
+
+    def update_P(self):
+        &#34;&#34;&#34;
+        Call when you need to update the P matrix because you updated the data
+        &#34;&#34;&#34;
+        self.P = self.calculate_P()
+        self.ProblemSetup()
+
+    def update_q(self):
+        self.q = self.calculate_q()
+        self.ProblemSetup()
+
+    def updateIOConstrains(self,input_lb,input_ub,output_lb,output_ub):
+        def warning_mesg(in_out,lower_upper):
+            warnings.warn(in_out,&#34; constrains for the &#34;,lower_upper,&#34; bound are not corrct Length. NOT Updated&#34;)
+        if len(self.in_constr_lb) == len(input_lb):
+            self.in_constr_lb = np.array(input_lb)
+        else: warning_mesg(&#34;In&#34;,&#34;lower&#34;)
+        if len(self.in_constr_ub) == len(input_ub):
+            self.in_constr_ub = np.array(input_ub)
+        else: warning_mesg(&#34;In&#34;,&#34;upper&#34;)
+        if len(self.out_constr_lb) == len(output_lb):
+            self.out_constr_lb = np.array(output_lb)
+        else: warning_mesg(&#34;Out&#34;,&#34;lower&#34;)
+        if len(self.out_constr_ub) == len(output_ub):
+            self.out_constr_ub = np.array(output_ub)
+        else: warning_mesg(&#34;Out&#34;,&#34;upper&#34;)
+        
+        self.calculate_bounds_u_l()
+        self.prob.update(l = self.lb,u = self.ub)
+
+    def calculate_P(self):
+        &#34;&#34;&#34;
+        Calculates the matrix P for the Optimization problem
+
+        Returns
+        -------
+        out : matrix q
+            Matrix of given shape.
+        Notes
+        -------
+        [R] [0] [0] \n
+        [0] [Q] [0] \n
+        [0] [0] [l_s * Y_p*Y_p + l_g * I]\n
+
+        -------
+        update only if Y_p, lambda_g, lambda_s, Q, R changes
+        &#34;&#34;&#34;
+        P_u = np.kron(np.eye(self.T_f), self.R) 
+        P_y = np.kron(np.eye(self.T_f), self.Q) 
+        #P_g = self.lambda_s * np.matmul(self.Y_p.T,self.Y_p) + np.eye(self.g_len)*self.lambda_g
+        P_g = np.zeros((self.g_len,self.g_len))
+        if self.regularize:
+           P_g = self.lambda_s * np.matmul(self.Y_p.T,self.Y_p)  + np.eye(self.g_len)*self.lambda_g
+        #print(&#34;P_u shape :&#34;,np.shape(P_u))
+        #print(&#34;P_y shape :&#34;,np.shape(P_y))
+        #print(&#34;P_g shape :&#34;,np.shape(P_g),P_g)
+        #print(&#34;x0 shape :&#34;,np.shape(x0))
+
+        zeros_1_2 = np.zeros((self.T_f*self.input_size, self.T_f*self.output_size))
+        zeros_1_3 = np.zeros((self.T_f*self.input_size, self.data_length-self.L))
+
+        zeros_2_1 = np.zeros((self.T_f*self.output_size, self.T_f*self.input_size))
+        zeros_2_3 = np.zeros((self.T_f*self.output_size,self.data_length-self.L))
+
+        zeros_3_1 = np.zeros((self.data_length-self.L, self.T_f*self.input_size))
+        zeros_3_2 = np.zeros((self.data_length-self.L, self.T_f*self.output_size))
+        P = np.block([[P_u,zeros_1_2,zeros_1_3],
+                     [zeros_2_1,P_y,zeros_2_3],
+                     [zeros_3_1,zeros_3_2,P_g]])
+        P = sparse.csc_matrix(2*P)
+        return P
+
+    def calculate_q(self):
+        &#34;&#34;&#34;
+        Calculates the matrix q for the Optimization problem
+        Returns
+        -------
+        out : matrix q
+              Matrix of given shape.
+        -------
+        update when y_ini, y_r, u_r, Q, R, lambda_g, lambda_s changes
+            -&gt;in update_y_r
+            -&gt;in update_in_out_measures
+
+        q = [-2u_r*R ... -2y_r*Q...(-2*l_d*y_ini*Y_p + -2*l_g*gr^T)....] u      =  u_r*R*u  +  y_r*Q*y  +  y_ini*Y_p*g - gr*g
+                                                        y
+                                                        g
+        FOR UREGULARIZED
+        q = [-2u_r*R ... -2y_r*Q...0....]               u             =  -u_r*R*u  +  -y_r*Q*y  +  0...
+                                                        y
+                                                        g
+        &#34;&#34;&#34;
+        factor = -2 #TODO: -2 is the factor form the equation but is it eally needed?
+        temp1 = factor*np.matmul(np.array(self.u_r),self.R)
+        q_u = temp1
+        for i in range(1,self.T_f):
+            q_u = np.hstack((temp1,q_u))
+        temp2 = factor*np.matmul(np.array(self.y_r),self.Q) 
+        q_y = temp2
+        for i in range(1,self.T_f):
+            q_y = np.hstack((temp2,q_y))
+        #print(q_y)
+        #print(&#34;self.y_ini&#34;,np.shape(self.y_ini),&#34; self.Y_p&#34;,np.shape(self.Y_p))
+        #print(np.shape(self.y_ini.flatten().T),np.shape(self.y_ini.flatten()))
+        q_g = np.zeros(self.g_len)
+        if self.regularize:
+            q_g_first_term = factor*self.lambda_s*np.matmul(self.y_ini.flatten().T,self.Y_p) 
+            q_g_second_term = factor*self.lambda_g*self.g_r.T 
+            q_g = q_g_first_term + q_g_second_term
+        #print(&#34;q_u&#34;,np.shape(q_u))
+        #print(&#34;q_y&#34;,np.shape(q_y))
+        #print(&#34;q_g_first_term&#34;,np.shape(q_g_first_term))
+        #print(&#34;q_g_second_term&#34;,np.shape(q_g_second_term))
+
+        q = np.hstack((q_u,q_y,q_g))
+        #q = np.hstack((q_u,q))
+        #print(&#34;q shape: &#34;,np.shape(q))
+        return q
+
+    def calculate_A(self):
+        &#34;&#34;&#34;
+        0 0 U_p             Up*g          = [u_ini]                 \n
+        -1 0 U_f   u      -u + Uf*g     = [0]                     \n
+        0 -1 Y_f   y   =  -y + Yf*g     = [0]                     \n
+        1 0 0      g      u             &lt; [u_upper]   &gt; [u_lower] \n
+        0 1 0               y             &lt; [y_upper]   &gt; [y_lower] \n
+        ----- ----- ----- ----- ----- ----- ----- -----
+        \n
+            A       x        l/u                                \n
+
+        FOR UNREGULARIZED:\n
+        0   0  Up               Up*g     = u_ini                \n
+        0   0  Yp               Yp*g     = y_ini                \n
+       -1   0  Uf   u      -u + Uf*g     = 0                    \n
+        0  -1  Yf   y   =  -y + Yf*g     = 0                    \n
+        1   0  0    g       u             &lt; u_upper   &gt; u_lower \n
+        0   1  0            y             &lt; y_upper   &gt; y_lower \n
+        
+            A       x        l/u
+
+        &#34;&#34;&#34;
+        u_ZEROS_1_1 = np.zeros((self.input_size*self.T_ini,self.input_size*self.T_f))
+        y_ZEROS_1_2 = np.zeros((self.input_size*self.T_ini,self.output_size*self.T_f))
+
+        u_factor_2_1 = np.eye(self.input_size*self.T_f)*-1.0
+        u_ZEROS_2_2 = np.zeros((self.input_size*self.T_f,self.output_size*self.T_f))
+
+        y_ZEROS_3_1 = np.zeros((self.output_size*self.T_f,self.input_size*self.T_f))
+        y_factor_3_2 = np.eye(self.output_size*self.T_f)*-1.0
+
+        u_boundaries_4_1 = np.eye(self.input_size*self.T_f)
+        u_bouds_zeros_4_2 = np.zeros((self.input_size*self.T_f,self.input_size*self.T_f))
+
+        y_boundaries_5_2 = np.eye(self.output_size*self.T_f)
+        y_bouds_zeros_5_1 = np.zeros((self.output_size*self.T_f,self.output_size*self.T_f))
+
+        ZEROS_4_3 = np.zeros((self.input_size*self.T_f,(self.data_length - self.L)))
+        ZEROS_5_3 = np.zeros((self.output_size*self.T_f,(self.data_length - self.L)))
+
+        #print(np.shape(u_ZEROS_1_1),np.shape(y_ZEROS_1_2),np.shape(self.U_p))
+        #print(np.shape(u_factor_2_1),np.shape(u_ZEROS_2_2),np.shape(self.U_f))
+        #print(np.shape(y_ZEROS_3_1),np.shape(y_factor_3_2),np.shape(self.Y_f))
+        if self.regularize:
+            A = np.block([[u_ZEROS_1_1,y_ZEROS_1_2,self.U_p],
+                        [u_factor_2_1,u_ZEROS_2_2,self.U_f],
+                        [y_ZEROS_3_1,y_factor_3_2,self.Y_f],
+                        [u_boundaries_4_1,u_bouds_zeros_4_2,ZEROS_4_3],
+                        [y_bouds_zeros_5_1,y_boundaries_5_2,ZEROS_5_3]])
+        else:
+            #second line -&gt; adds Y_p
+            A = np.block([[u_ZEROS_1_1,y_ZEROS_1_2,self.U_p],
+                          [u_ZEROS_1_1,y_ZEROS_1_2,self.Y_p],
+                          [u_factor_2_1,u_ZEROS_2_2,self.U_f],
+                          [y_ZEROS_3_1,y_factor_3_2,self.Y_f],
+                          [u_boundaries_4_1,u_bouds_zeros_4_2,ZEROS_4_3],
+                          [y_bouds_zeros_5_1,y_boundaries_5_2,ZEROS_5_3]])
+
+        A = sparse.csc_matrix(2*A)
+        return A
+
+    def calculate_bounds_u_l(self):
+        &#34;&#34;&#34;
+        upper and lower bounds. Update when constrinats are changed
+        
+        &#34;&#34;&#34;
+
+        y_zeros = [[0] for i in range(self.T_f*self.output_size)]
+
+        u_zeros = [[0] for i in range(self.T_f*self.input_size)]
+
+        lb_u_temp = np.reshape(self.in_constr_lb,(len(self.in_constr_lb),1))
+        lb_y_temp = np.reshape(self.out_constr_lb,(len(self.out_constr_lb),1))
+        lb_u = lb_u_temp
+        for i in range(self.T_f-1):
+            lb_u = np.vstack((lb_u_temp,lb_u))
+        lb_y = lb_y_temp
+        for i in range(self.T_f-1):
+            lb_y = np.vstack((lb_y_temp,lb_y))
+        
+        ub_u_temp = np.reshape(self.in_constr_ub,(len(self.in_constr_ub),1))
+        ub_y_temp = np.reshape(self.out_constr_ub,(len(self.out_constr_ub),1))
+        ub_u = ub_u_temp
+        for i in range(self.T_f-1):
+            ub_u = np.vstack((ub_u_temp,ub_u))
+        ub_y = ub_y_temp
+        for i in range(self.T_f-1):
+            ub_y = np.vstack((ub_y_temp,ub_y))
+
+        #lb_y = lb_y.flatten()
+        #lb_u = lb_u.flatten()
+        #print(np.shape(ub_y),np.shape(ub_u))
+        #ub_y = ub_y.flatten()
+        #ub_u = ub_u.flatten()
+        #print(np.shape(ub_y),np.shape(ub_u))
+        
+        u_ini_flat = np.reshape(self.u_ini,(self.input_size*self.T_ini,1))
+        y_ini_flat = np.reshape(self.y_ini,(self.output_size*self.T_ini,1))
+
+        if self.regularize:
+            lb = np.vstack((u_ini_flat,u_zeros,y_zeros,lb_u,lb_y))
+            ub = np.vstack((u_ini_flat,u_zeros,y_zeros,ub_u,ub_y))
+        else:
+            lb = np.vstack((u_ini_flat,y_ini_flat,u_zeros,y_zeros,lb_u,lb_y))
+            ub = np.vstack((u_ini_flat,y_ini_flat,u_zeros,y_zeros,ub_u,ub_y))
+        
+        self.ub = ub
+        self.lb = lb
+        
+    def getInputOutputPrediction(self):
+        &#34;&#34;&#34;
+        Inputs:
+        -------
+        None\n
+        Returns:
+        -------
+        This returns the predictions after setting the controller up correctly.
+        u,y,u_star,y_star,g \n
+        u = Suggested inputs. Array of size T_f x m   \n
+        y = Output predictions. Array of size T_f x p \n
+        u_star = same as u but calculated by U_f x g  \n
+        y_star = same as y but calculated by Y_f x g  \n
+        g = the &#39;learned&#39; state weights               \n
+        &#34;&#34;&#34;
+        x0_result = self.solve_for_x_regularized()
+        #x0_result = self.opt_solve_for_x()
+        g = x0_result[self.T_f*self.input_size + self.T_f*self.output_size : ]
+        self.g = g
+        u = x0_result[:self.T_f*self.input_size]
+        u_star = np.reshape(np.matmul(self.U_f,g),(self.T_f,self.input_size))
+        
+        y =  x0_result[self.T_f*self.input_size : self.T_f*self.input_size + self.T_f*self.output_size]
+        y_star = np.reshape(np.matmul(self.Y_f,g),(self.T_f,self.output_size))
+
+        u = np.reshape(u, (self.T_f,self.input_size))
+        u_star = np.reshape(u_star, (self.T_f,self.input_size))
+        y = np.reshape(y, (self.T_f,self.output_size))
+        y_star = np.reshape(y_star, (self.T_f,self.output_size))
+
+
+        return u,y,u_star,y_star,g
+
+
+    def solve_for_x_regularized(self):
+        res = self.prob.solve()
+        return res.x
+
+    def updateReferenceWaypoint(self,new_y_r):
+        &#34;&#34;&#34;
+        The reference output y_r can be updated. Will notify if wrong Size\n
+        Inputs:
+        -------
+        new_y_r = array of new reference output \n
+        Returns:
+        -------
+        None
+        &#34;&#34;&#34;
+        if len(new_y_r) != self.output_size:
+            print(&#34;Wrong size for reference point. Must be: &#34;,self.output_size,&#34;\n&#34;)
+        self.y_r = new_y_r
+        self.recalculate_g_r
+        self.update_q()
+    
+    def updateReferenceInput(self,new_u_r):
+        &#34;&#34;&#34;
+        The reference input u_r can be updated. Will notify if wrong Size\n
+        Inputs:
+        -------
+        new_u_r = array of new reference inout \n
+        Returns:
+        -------
+        None
+        &#34;&#34;&#34;
+        if len(new_u_r) != self.input_size:
+            print(&#34;Wrong size for reference point. Must be: &#34;,self.output_size,&#34;\n&#34;)
+        self.u_r = new_u_r
+        self.recalculate_g_r
+        self.update_q()
+    
+    def updateControlCost_R(self,new_R):
+        &#34;&#34;&#34;
+        The Control Cost matrix R can be updated. Will notify if wrong Size\n
+        It will update P and q aswell
+        Inputs:
+        -------
+        new_R = array of new Control Cost matrix \n
+        Returns:
+        -------
+        None
+        &#34;&#34;&#34;
+        if np.shape(new_R) != np.shape(self.R):
+            print(&#34;Wrong dimension for updatad Control Cost&#34;)
+        else:
+            self.R = new_R
+            self.update_P()
+            self.update_q()
+
+    def updateTrackingCost_Q(self,new_Q):
+        &#34;&#34;&#34;
+        The Tracking Cost matrix Q can be updated. Will notify if wrong Size\n
+        It will update P and q aswell
+        Inputs:
+        -------
+        new_Q = array of new  Tracking Cost matrix \n
+        Returns:
+        -------
+        None
+        &#34;&#34;&#34;
+        if np.shape(new_Q) != np.shape(new_Q):
+            print(&#34;Wrong dimension for updatad Control Cost&#34;)
+        else:
+            self.Q = new_Q
+            self.update_P()
+            self.update_q()
+    
+   
+    def recalculate_g_r(self):
+        &#34;&#34;&#34;
+        Will recalculate the regularization parameters g_r().
+        called when updated y_r, u_r
+        Inputs:
+        -------
+        None \n
+        Returns:
+        -------
+        None
+        &#34;&#34;&#34;
+        self.g_r = []
+        self.data_inversed_regularized = np.vstack((self.U_p,self.Y_p,self.U_f,self.Y_f))    
+        #self.data_inversed_regularized = np.vstack((self.Y_p,self.data_inversed_regularized))
+        #self.data_inversed_regularized = np.vstack((self.U_p,self.data_inversed_regularized))
+        self.g_r = np.linalg.pinv(self.data_inversed_regularized)
+        
+        #temp = []
+        #ur_tmep = np.array(self.u_r).T
+        T_ini_ur = np.kron(np.ones((self.T_ini,1)),np.reshape(self.u_r,(self.input_size,1)))
+        T_ini_yr = np.kron(np.ones((self.T_ini,1)), np.reshape(self.y_r,(self.output_size,1)))
+        T_f_ur = np.kron(np.ones((self.T_f,1)), np.reshape(self.u_r,(self.input_size,1)))
+        T_f_yr = np.kron(np.ones((self.T_f,1)), np.reshape(self.y_r,(self.output_size,1)))
+        temp = np.vstack([T_ini_ur,T_ini_yr,T_f_ur,T_f_yr])
+        
+        self.g_r = np.matmul(self.g_r,temp.flatten())
+        
+    def updateIn_Out_Measures(self,new_input_measure,new_output_measures,verbose = False):
+        &#34;&#34;&#34;
+        Will Update Inout and output measses. that is u_ini and y_ini.
+        Inputs:
+        -------
+        new_input_measure = new array of size 1 x m \n
+        new_output_measures = new array of size 1 x p\n
+        verbose = if action should be printed\n
+        Returns:
+        -------
+        None
+        &#34;&#34;&#34;
+        if(len(new_input_measure) != self.input_size or len(new_output_measures) != self.output_size):
+            print(&#34;Trying to update with wrong array sizes&#34;)
+        
+        if verbose == True:
+            inp = [round(i,2) for i in new_input_measure]
+            inp = [round(i,2) for i in new_input_measure]
+            outp = [round(i,2) for i in new_output_measures]
+
+            print(&#34;Updating in: &#34;,inp,&#34; out: &#34;,outp)
+
+        #self.u_ini = np.vstack((new_input_measure,self.u_ini))
+        #self.y_ini = np.vstack((new_output_measures,self.y_ini))
+        self.u_ini = np.vstack((self.u_ini,new_input_measure))
+        self.y_ini = np.vstack((self.y_ini,new_output_measures))
+
+        while(len(self.y_ini) &gt; self.T_ini):
+            self.u_ini = np.delete(self.u_ini,0,0)
+            self.y_ini = np.delete(self.y_ini,0,0)
+
+        # if y_ini is filled, only then update q, as it requires y_ini to be T_ini long
+        # if this is not checked then you can not initalize y_ini with this function in the beginning
+        if len(self.y_ini) == self.T_ini:
+            self.update_q()
+
+    def generateHankel_Collums(self,L,data_sequence):
+        &#34;&#34;&#34;
+        Sub-routine for generating the hakel matrix
+        &#34;&#34;&#34;
+        # this generates a hankel amtrix with the size : L x (data_length-L) as seen my each input sequence
+        # viewed with each data point it is:      L * input_size  X  (data_length-L)*input_size
+        # start with i:L+i -&gt; flatten -&gt; stick to right of H
+        T = len(data_sequence)
+        data_sequence = np.asarray(data_sequence)
+        sequence_length = len(data_sequence[0])
+        H = data_sequence[0:L,:].flatten()
+        for i in range(1,T-L):
+            one_collum = np.asarray(data_sequence[i:(L+i),:])
+            one_collum = one_collum.flatten()
+            H = np.column_stack((H, one_collum))
+        #print(&#34;H:&#34;,np.shape(H),&#34; == &#34;(L * sequence_length, len(data_sequence) - L))
+        return H
+
+    def test_g_validity(self):
+            in_check = np.matmul(self.U_p,self.g) - self.u_ini
+            out_check = np.matmul(self.Y_p,self.g) - self.y_ini
+            print(&#34;U_p*g - u_ini&#34;,in_check[0],&#34;\nY_p*g - y_ini:&#34;,out_check[0],&#34;\n&#34;)
+    
+    def check_data_sufficiency(self):
+        L = self.T_ini + self.T_f
+        if self.data_length &lt; ((self.input_size + 1)*L+1 ):
+            warnings.warn(&#34;Data Lenglth not Sufficient. N_data(&#34;+str(self.data_length)+&#34;) !&gt; (input_size(&#34;+str(self.input_size)+&#34;) + 1)*L(&#34;+str(L)+&#34;)+1&#34;)
+
+    def _Init_u_y_ini(self):
+        &#34;&#34;&#34;
+        Use only in __init__()
+        It is called in __init__() and does not have to called manually
+        sets u_ini and y_ini the last elements of input_sequence and output_sequence
+        This has to be done when the controller is initalized, but no recent system data is available.
+
+        &#34;&#34;&#34;
+        for i in range(self.T_ini-1):
+            self.u_ini = np.vstack((self.u_ini,self.input_sequence[self.data_length-self.T_ini+i]))
+            self.y_ini = np.vstack((self.y_ini,self.output_sequence[self.data_length-self.T_ini+i]))
+            #self.u_ini = np.vstack((self.u_ini,self.input_sequence[i]))
+            #self.y_ini = np.vstack((self.y_ini,self.output_sequence[i]))
+        #print(&#34;u_ini init:&#34;,np.shape(self.u_ini),self.u_ini,&#34;T_ini:&#34;,self.T_ini)
+        #print(&#34;y_ini init:&#34;,np.shape(self.y_ini),self.y_ini,&#34;T_ini:&#34;,self.T_ini)</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="DeePC_OSQP.Controller"><code class="flex name class">
+<span>class <span class="ident">Controller</span></span>
+<span>(</span><span>data, T_ini, T_f, input_size, output_size, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>This class handels Everything</p>
+</div>
+<h2 id="args">Args</h2>
+<p>@data:[[in_1, in_2, &hellip;, in_n,out_1,out_2,&hellip;,out_m],
+t+1 -&gt;[in_1, in_2, &hellip;, &hellip;]
+t+2 -&gt;[in_1, in_2, &hellip;, ]]</p>
+<p>@T_ini: size of the past time frame</p>
+<p>@T_f
+: size of future Time frame</p>
+<p>@input_size: # inputs per timestep. (also n)</p>
+<p>@output_size: # outputs per timestep. (also m)</p>
+<p>@**kwargs
+: settings -&gt; see doc for information</p>
+<h2 id="returns">Returns</h2>
+<p>An Object of type <Controller></p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class Controller:
+    &#34;&#34;&#34;
+    .. important::
+        This class handels Everything
+    Args:
+        @data:[[in_1, in_2, ..., in_n,out_1,out_2,...,out_m],
+        t+1 -&gt;[in_1, in_2, ..., ...]
+        t+2 -&gt;[in_1, in_2, ..., ]]\n
+        @T_ini: size of the past time frame\n
+        @T_f  : size of future Time frame\n
+        @input_size: # inputs per timestep. (also n)\n
+        @output_size: # outputs per timestep. (also m)\n
+        @**kwargs   : settings -&gt; see doc for information\n
+    Returns:
+        An Object of type &lt;Controller&gt;
+    &#34;&#34;&#34;
+    def __init__(self,data,T_ini,T_f,input_size,output_size,**kwargs):
+        self.input_size = input_size
+        self.output_size = output_size
+
+        ### These are all the Parameters that can be set With the **kwargs
+        self.lambda_s = 1 #weight of softned inital constraint = 750,000,000
+        self.lambda_g = 1 #weight on regularization of g = 500
+        self.out_constr_lb = np.array([-np.inf for i in range(self.output_size)])
+        self.out_constr_ub = np.array([np.inf for i in range(self.output_size)])
+        self.in_constr_lb  = np.array([-np.inf for i in range(self.input_size)])
+        self.in_constr_ub = np.array([np.inf for i in range(self.input_size)])
+        self.regularize = True
+
+        self.settable_parameters = {&#34;lambda_s&#34;:&#34;weight of softned inital constraint&#34;,
+                                    &#34;lambda_g&#34;:&#34;weight on regularization of&#34;,
+                                    &#34;out_constr_lb&#34;:&#34;Lower Constraints bounds for Output&#34;,
+                                    &#34;out_constr_ub&#34;:&#34;Upper Constraints bounds for Output&#34;,
+                                    &#34;in_constr_lb&#34;:&#34;Lower Constraints bounds for Input&#34;,
+                                    &#34;in_constr_ub&#34;:&#34;Upper Constraints bounds for Input&#34;,
+                                    &#34;regularize&#34;:&#34;If Regularization should be allpied&#34;}
+        self.UnpackKWARGS(kwargs)
+        self.data_length = len(data)
+        self.data = np.asarray(data)
+
+        if len(self.data[0]) != (input_size + output_size):
+            print(&#34;initalization data dimenstion does not match iniatlized in/out sizes: &#34;,len(self.data[0]),&#34; != &#34;,input_size,&#34; + &#34;,output_size)
+
+        self.T_ini = T_ini
+        self.T_f = T_f
+        self.L = self.T_ini + self.T_f
+
+        self.check_data_sufficiency() # checks for T &gt; (m+1)*L+1
+
+
+        # defines:
+        self.u_r = np.array([0.0 for i in range(self.input_size)]) # steady state reference inout is no throttle, steer or brake
+        self.y_r = np.array([0.0 for i in range(self.output_size)]) # steady state reference output should probably be the reference waypoint I want to reach ?
+
+        
+        self.Q = np.eye(self.output_size) # quardatic tracking effort cost
+        #self.Q = np.asarray([[1,0,0],[0,1,0],[0,0,1]])
+        self.R = np.eye(self.input_size) #quardatic control effort cost
+        #self.R = np.asarray([[1,0,0],[0,1,0],[0,0,1]])
+        
+        # data is in the form:
+        #[throttle,steer,brake,car-x,car-y,car-yaw]
+        #[u1,u2,u3, y1,y2,y3]
+        self.output_sequence = self.data[:,self.input_size:self.output_size + self.input_size]# y
+        self.input_sequence =  self.data[:,:self.input_size] # u
+
+
+        #to be updated as the controller runs:
+        self.y_ini = np.zeros((self.output_size)) # T_ini most recent input/output measures
+        self.u_ini = np.zeros((self.input_size))
+        self._Init_u_y_ini() # sets the last few datapoints from output_sequence and input_sequence
+
+ 
+        self.U_p_f = self.generateHankel_Collums(self.L,self.input_sequence)
+        self.U_p = self.U_p_f[:self.T_ini*self.input_size,:] 
+        self.U_f = self.U_p_f[self.L*self.input_size-self.T_f*self.input_size:,:]
+
+        self.Y_p_f = self.generateHankel_Collums(self.L,self.output_sequence)
+        self.Y_p = self.Y_p_f[:self.T_ini*self.output_size,:] 
+        self.Y_f = self.Y_p_f[self.L*self.output_size-self.T_f*self.output_size:,:]
+
+        # these are only needed for Regularization:
+        self.g_r = []
+        self.recalculate_g_r()
+
+
+        # all the initalization for the SOlver:
+        init_value = 0.0
+        self.u_len = self.T_f*self.input_size
+        self.y_len =  self.T_f*self.output_size
+        self.g_len = len(self.input_sequence) - self.L
+
+        self.x0 = np.full(((self.u_len + self.y_len + self.g_len)),init_value)
+
+        # for initalization make u and y ini the Tini last measurements
+        # this will get updated once the Vehicle starts to produce its own data
+        
+        # for i in range(self.T_ini):
+        #     #self.updateIn_Out_Measures(self.input_sequence[self.data_length-1 - self.T_ini + i], self.output_sequence[self.data_length-1 - self.T_ini + i])
+        #     idx = len(self.input_sequence) - self.T_ini 
+        #     self.updateIn_Out_Measures(self.input_sequence[idx-1], self.output_sequence[idx-1])
+        
+        # these nees y_ini and u_ini to be filled corretly by the above code
+        self.P = self.calculate_P()
+        self.q = self.calculate_q()
+        self.A = self.calculate_A()
+        
+        self.calculate_bounds_u_l()
+        self.SolverSettings = {&#34;warm_start&#34; : False,
+                                &#34;adaptive_rho&#34; : False,
+                                &#34;eps_rel&#34;: 0.00001,
+                                &#34;eps_abs&#34;: 0.00001,
+                                &#34;max_iter&#34;: 10000,
+                                &#34;verbose&#34; :False}
+                                
+        self.prob = osqp.OSQP() #sometimes there is ValueError: Workspace allocation error!
+        self.prob.setup(self.P, self.q, self.A, l = self.lb, u = self.ub,**self.SolverSettings) 
+
+
+    # TODO: this is not nice, check if variables are same type and same LENGTH!
+    def UnpackKWARGS(self,keyword_arguments_list):
+        &#34;&#34;&#34;
+        This function unpack the **kwargs that are passed upon initialization and sets them
+        if they are not already attributes.
+        &#34;&#34;&#34;
+
+        for key in keyword_arguments_list:
+            temp = getattr(self,key,None)
+            if temp is not None and key in self.settable_parameters:
+                setattr(self,key,keyword_arguments_list[key])
+            else:
+                print(&#34;Warning: Trying to set Parameter&#34;,key,&#34;, but it does not exitst! Settable parameters are:\n&#34;)
+                for key in self.settable_parameters:
+                    print(key,&#34;: &#34;,self.settable_parameters[key])
+                print(&#34;\n&#34;)
+
+    def ProblemSetup(self):
+        self.prob = osqp.OSQP()
+        self.prob.setup(self.P, self.q, self.A, l = self.lb, u = self.ub,**self.SolverSettings) 
+
+    def update_P(self):
+        &#34;&#34;&#34;
+        Call when you need to update the P matrix because you updated the data
+        &#34;&#34;&#34;
+        self.P = self.calculate_P()
+        self.ProblemSetup()
+
+    def update_q(self):
+        self.q = self.calculate_q()
+        self.ProblemSetup()
+
+    def updateIOConstrains(self,input_lb,input_ub,output_lb,output_ub):
+        def warning_mesg(in_out,lower_upper):
+            warnings.warn(in_out,&#34; constrains for the &#34;,lower_upper,&#34; bound are not corrct Length. NOT Updated&#34;)
+        if len(self.in_constr_lb) == len(input_lb):
+            self.in_constr_lb = np.array(input_lb)
+        else: warning_mesg(&#34;In&#34;,&#34;lower&#34;)
+        if len(self.in_constr_ub) == len(input_ub):
+            self.in_constr_ub = np.array(input_ub)
+        else: warning_mesg(&#34;In&#34;,&#34;upper&#34;)
+        if len(self.out_constr_lb) == len(output_lb):
+            self.out_constr_lb = np.array(output_lb)
+        else: warning_mesg(&#34;Out&#34;,&#34;lower&#34;)
+        if len(self.out_constr_ub) == len(output_ub):
+            self.out_constr_ub = np.array(output_ub)
+        else: warning_mesg(&#34;Out&#34;,&#34;upper&#34;)
+        
+        self.calculate_bounds_u_l()
+        self.prob.update(l = self.lb,u = self.ub)
+
+    def calculate_P(self):
+        &#34;&#34;&#34;
+        Calculates the matrix P for the Optimization problem
+
+        Returns
+        -------
+        out : matrix q
+            Matrix of given shape.
+        Notes
+        -------
+        [R] [0] [0] \n
+        [0] [Q] [0] \n
+        [0] [0] [l_s * Y_p*Y_p + l_g * I]\n
+
+        -------
+        update only if Y_p, lambda_g, lambda_s, Q, R changes
+        &#34;&#34;&#34;
+        P_u = np.kron(np.eye(self.T_f), self.R) 
+        P_y = np.kron(np.eye(self.T_f), self.Q) 
+        #P_g = self.lambda_s * np.matmul(self.Y_p.T,self.Y_p) + np.eye(self.g_len)*self.lambda_g
+        P_g = np.zeros((self.g_len,self.g_len))
+        if self.regularize:
+           P_g = self.lambda_s * np.matmul(self.Y_p.T,self.Y_p)  + np.eye(self.g_len)*self.lambda_g
+        #print(&#34;P_u shape :&#34;,np.shape(P_u))
+        #print(&#34;P_y shape :&#34;,np.shape(P_y))
+        #print(&#34;P_g shape :&#34;,np.shape(P_g),P_g)
+        #print(&#34;x0 shape :&#34;,np.shape(x0))
+
+        zeros_1_2 = np.zeros((self.T_f*self.input_size, self.T_f*self.output_size))
+        zeros_1_3 = np.zeros((self.T_f*self.input_size, self.data_length-self.L))
+
+        zeros_2_1 = np.zeros((self.T_f*self.output_size, self.T_f*self.input_size))
+        zeros_2_3 = np.zeros((self.T_f*self.output_size,self.data_length-self.L))
+
+        zeros_3_1 = np.zeros((self.data_length-self.L, self.T_f*self.input_size))
+        zeros_3_2 = np.zeros((self.data_length-self.L, self.T_f*self.output_size))
+        P = np.block([[P_u,zeros_1_2,zeros_1_3],
+                     [zeros_2_1,P_y,zeros_2_3],
+                     [zeros_3_1,zeros_3_2,P_g]])
+        P = sparse.csc_matrix(2*P)
+        return P
+
+    def calculate_q(self):
+        &#34;&#34;&#34;
+        Calculates the matrix q for the Optimization problem
+        Returns
+        -------
+        out : matrix q
+              Matrix of given shape.
+        -------
+        update when y_ini, y_r, u_r, Q, R, lambda_g, lambda_s changes
+            -&gt;in update_y_r
+            -&gt;in update_in_out_measures
+
+        q = [-2u_r*R ... -2y_r*Q...(-2*l_d*y_ini*Y_p + -2*l_g*gr^T)....] u      =  u_r*R*u  +  y_r*Q*y  +  y_ini*Y_p*g - gr*g
+                                                        y
+                                                        g
+        FOR UREGULARIZED
+        q = [-2u_r*R ... -2y_r*Q...0....]               u             =  -u_r*R*u  +  -y_r*Q*y  +  0...
+                                                        y
+                                                        g
+        &#34;&#34;&#34;
+        factor = -2 #TODO: -2 is the factor form the equation but is it eally needed?
+        temp1 = factor*np.matmul(np.array(self.u_r),self.R)
+        q_u = temp1
+        for i in range(1,self.T_f):
+            q_u = np.hstack((temp1,q_u))
+        temp2 = factor*np.matmul(np.array(self.y_r),self.Q) 
+        q_y = temp2
+        for i in range(1,self.T_f):
+            q_y = np.hstack((temp2,q_y))
+        #print(q_y)
+        #print(&#34;self.y_ini&#34;,np.shape(self.y_ini),&#34; self.Y_p&#34;,np.shape(self.Y_p))
+        #print(np.shape(self.y_ini.flatten().T),np.shape(self.y_ini.flatten()))
+        q_g = np.zeros(self.g_len)
+        if self.regularize:
+            q_g_first_term = factor*self.lambda_s*np.matmul(self.y_ini.flatten().T,self.Y_p) 
+            q_g_second_term = factor*self.lambda_g*self.g_r.T 
+            q_g = q_g_first_term + q_g_second_term
+        #print(&#34;q_u&#34;,np.shape(q_u))
+        #print(&#34;q_y&#34;,np.shape(q_y))
+        #print(&#34;q_g_first_term&#34;,np.shape(q_g_first_term))
+        #print(&#34;q_g_second_term&#34;,np.shape(q_g_second_term))
+
+        q = np.hstack((q_u,q_y,q_g))
+        #q = np.hstack((q_u,q))
+        #print(&#34;q shape: &#34;,np.shape(q))
+        return q
+
+    def calculate_A(self):
+        &#34;&#34;&#34;
+        0 0 U_p             Up*g          = [u_ini]                 \n
+        -1 0 U_f   u      -u + Uf*g     = [0]                     \n
+        0 -1 Y_f   y   =  -y + Yf*g     = [0]                     \n
+        1 0 0      g      u             &lt; [u_upper]   &gt; [u_lower] \n
+        0 1 0               y             &lt; [y_upper]   &gt; [y_lower] \n
+        ----- ----- ----- ----- ----- ----- ----- -----
+        \n
+            A       x        l/u                                \n
+
+        FOR UNREGULARIZED:\n
+        0   0  Up               Up*g     = u_ini                \n
+        0   0  Yp               Yp*g     = y_ini                \n
+       -1   0  Uf   u      -u + Uf*g     = 0                    \n
+        0  -1  Yf   y   =  -y + Yf*g     = 0                    \n
+        1   0  0    g       u             &lt; u_upper   &gt; u_lower \n
+        0   1  0            y             &lt; y_upper   &gt; y_lower \n
+        
+            A       x        l/u
+
+        &#34;&#34;&#34;
+        u_ZEROS_1_1 = np.zeros((self.input_size*self.T_ini,self.input_size*self.T_f))
+        y_ZEROS_1_2 = np.zeros((self.input_size*self.T_ini,self.output_size*self.T_f))
+
+        u_factor_2_1 = np.eye(self.input_size*self.T_f)*-1.0
+        u_ZEROS_2_2 = np.zeros((self.input_size*self.T_f,self.output_size*self.T_f))
+
+        y_ZEROS_3_1 = np.zeros((self.output_size*self.T_f,self.input_size*self.T_f))
+        y_factor_3_2 = np.eye(self.output_size*self.T_f)*-1.0
+
+        u_boundaries_4_1 = np.eye(self.input_size*self.T_f)
+        u_bouds_zeros_4_2 = np.zeros((self.input_size*self.T_f,self.input_size*self.T_f))
+
+        y_boundaries_5_2 = np.eye(self.output_size*self.T_f)
+        y_bouds_zeros_5_1 = np.zeros((self.output_size*self.T_f,self.output_size*self.T_f))
+
+        ZEROS_4_3 = np.zeros((self.input_size*self.T_f,(self.data_length - self.L)))
+        ZEROS_5_3 = np.zeros((self.output_size*self.T_f,(self.data_length - self.L)))
+
+        #print(np.shape(u_ZEROS_1_1),np.shape(y_ZEROS_1_2),np.shape(self.U_p))
+        #print(np.shape(u_factor_2_1),np.shape(u_ZEROS_2_2),np.shape(self.U_f))
+        #print(np.shape(y_ZEROS_3_1),np.shape(y_factor_3_2),np.shape(self.Y_f))
+        if self.regularize:
+            A = np.block([[u_ZEROS_1_1,y_ZEROS_1_2,self.U_p],
+                        [u_factor_2_1,u_ZEROS_2_2,self.U_f],
+                        [y_ZEROS_3_1,y_factor_3_2,self.Y_f],
+                        [u_boundaries_4_1,u_bouds_zeros_4_2,ZEROS_4_3],
+                        [y_bouds_zeros_5_1,y_boundaries_5_2,ZEROS_5_3]])
+        else:
+            #second line -&gt; adds Y_p
+            A = np.block([[u_ZEROS_1_1,y_ZEROS_1_2,self.U_p],
+                          [u_ZEROS_1_1,y_ZEROS_1_2,self.Y_p],
+                          [u_factor_2_1,u_ZEROS_2_2,self.U_f],
+                          [y_ZEROS_3_1,y_factor_3_2,self.Y_f],
+                          [u_boundaries_4_1,u_bouds_zeros_4_2,ZEROS_4_3],
+                          [y_bouds_zeros_5_1,y_boundaries_5_2,ZEROS_5_3]])
+
+        A = sparse.csc_matrix(2*A)
+        return A
+
+    def calculate_bounds_u_l(self):
+        &#34;&#34;&#34;
+        upper and lower bounds. Update when constrinats are changed
+        
+        &#34;&#34;&#34;
+
+        y_zeros = [[0] for i in range(self.T_f*self.output_size)]
+
+        u_zeros = [[0] for i in range(self.T_f*self.input_size)]
+
+        lb_u_temp = np.reshape(self.in_constr_lb,(len(self.in_constr_lb),1))
+        lb_y_temp = np.reshape(self.out_constr_lb,(len(self.out_constr_lb),1))
+        lb_u = lb_u_temp
+        for i in range(self.T_f-1):
+            lb_u = np.vstack((lb_u_temp,lb_u))
+        lb_y = lb_y_temp
+        for i in range(self.T_f-1):
+            lb_y = np.vstack((lb_y_temp,lb_y))
+        
+        ub_u_temp = np.reshape(self.in_constr_ub,(len(self.in_constr_ub),1))
+        ub_y_temp = np.reshape(self.out_constr_ub,(len(self.out_constr_ub),1))
+        ub_u = ub_u_temp
+        for i in range(self.T_f-1):
+            ub_u = np.vstack((ub_u_temp,ub_u))
+        ub_y = ub_y_temp
+        for i in range(self.T_f-1):
+            ub_y = np.vstack((ub_y_temp,ub_y))
+
+        #lb_y = lb_y.flatten()
+        #lb_u = lb_u.flatten()
+        #print(np.shape(ub_y),np.shape(ub_u))
+        #ub_y = ub_y.flatten()
+        #ub_u = ub_u.flatten()
+        #print(np.shape(ub_y),np.shape(ub_u))
+        
+        u_ini_flat = np.reshape(self.u_ini,(self.input_size*self.T_ini,1))
+        y_ini_flat = np.reshape(self.y_ini,(self.output_size*self.T_ini,1))
+
+        if self.regularize:
+            lb = np.vstack((u_ini_flat,u_zeros,y_zeros,lb_u,lb_y))
+            ub = np.vstack((u_ini_flat,u_zeros,y_zeros,ub_u,ub_y))
+        else:
+            lb = np.vstack((u_ini_flat,y_ini_flat,u_zeros,y_zeros,lb_u,lb_y))
+            ub = np.vstack((u_ini_flat,y_ini_flat,u_zeros,y_zeros,ub_u,ub_y))
+        
+        self.ub = ub
+        self.lb = lb
+        
+    def getInputOutputPrediction(self):
+        &#34;&#34;&#34;
+        Inputs:
+        -------
+        None\n
+        Returns:
+        -------
+        This returns the predictions after setting the controller up correctly.
+        u,y,u_star,y_star,g \n
+        u = Suggested inputs. Array of size T_f x m   \n
+        y = Output predictions. Array of size T_f x p \n
+        u_star = same as u but calculated by U_f x g  \n
+        y_star = same as y but calculated by Y_f x g  \n
+        g = the &#39;learned&#39; state weights               \n
+        &#34;&#34;&#34;
+        x0_result = self.solve_for_x_regularized()
+        #x0_result = self.opt_solve_for_x()
+        g = x0_result[self.T_f*self.input_size + self.T_f*self.output_size : ]
+        self.g = g
+        u = x0_result[:self.T_f*self.input_size]
+        u_star = np.reshape(np.matmul(self.U_f,g),(self.T_f,self.input_size))
+        
+        y =  x0_result[self.T_f*self.input_size : self.T_f*self.input_size + self.T_f*self.output_size]
+        y_star = np.reshape(np.matmul(self.Y_f,g),(self.T_f,self.output_size))
+
+        u = np.reshape(u, (self.T_f,self.input_size))
+        u_star = np.reshape(u_star, (self.T_f,self.input_size))
+        y = np.reshape(y, (self.T_f,self.output_size))
+        y_star = np.reshape(y_star, (self.T_f,self.output_size))
+
+
+        return u,y,u_star,y_star,g
+
+
+    def solve_for_x_regularized(self):
+        res = self.prob.solve()
+        return res.x
+
+    def updateReferenceWaypoint(self,new_y_r):
+        &#34;&#34;&#34;
+        The reference output y_r can be updated. Will notify if wrong Size\n
+        Inputs:
+        -------
+        new_y_r = array of new reference output \n
+        Returns:
+        -------
+        None
+        &#34;&#34;&#34;
+        if len(new_y_r) != self.output_size:
+            print(&#34;Wrong size for reference point. Must be: &#34;,self.output_size,&#34;\n&#34;)
+        self.y_r = new_y_r
+        self.recalculate_g_r
+        self.update_q()
+    
+    def updateReferenceInput(self,new_u_r):
+        &#34;&#34;&#34;
+        The reference input u_r can be updated. Will notify if wrong Size\n
+        Inputs:
+        -------
+        new_u_r = array of new reference inout \n
+        Returns:
+        -------
+        None
+        &#34;&#34;&#34;
+        if len(new_u_r) != self.input_size:
+            print(&#34;Wrong size for reference point. Must be: &#34;,self.output_size,&#34;\n&#34;)
+        self.u_r = new_u_r
+        self.recalculate_g_r
+        self.update_q()
+    
+    def updateControlCost_R(self,new_R):
+        &#34;&#34;&#34;
+        The Control Cost matrix R can be updated. Will notify if wrong Size\n
+        It will update P and q aswell
+        Inputs:
+        -------
+        new_R = array of new Control Cost matrix \n
+        Returns:
+        -------
+        None
+        &#34;&#34;&#34;
+        if np.shape(new_R) != np.shape(self.R):
+            print(&#34;Wrong dimension for updatad Control Cost&#34;)
+        else:
+            self.R = new_R
+            self.update_P()
+            self.update_q()
+
+    def updateTrackingCost_Q(self,new_Q):
+        &#34;&#34;&#34;
+        The Tracking Cost matrix Q can be updated. Will notify if wrong Size\n
+        It will update P and q aswell
+        Inputs:
+        -------
+        new_Q = array of new  Tracking Cost matrix \n
+        Returns:
+        -------
+        None
+        &#34;&#34;&#34;
+        if np.shape(new_Q) != np.shape(new_Q):
+            print(&#34;Wrong dimension for updatad Control Cost&#34;)
+        else:
+            self.Q = new_Q
+            self.update_P()
+            self.update_q()
+    
+   
+    def recalculate_g_r(self):
+        &#34;&#34;&#34;
+        Will recalculate the regularization parameters g_r().
+        called when updated y_r, u_r
+        Inputs:
+        -------
+        None \n
+        Returns:
+        -------
+        None
+        &#34;&#34;&#34;
+        self.g_r = []
+        self.data_inversed_regularized = np.vstack((self.U_p,self.Y_p,self.U_f,self.Y_f))    
+        #self.data_inversed_regularized = np.vstack((self.Y_p,self.data_inversed_regularized))
+        #self.data_inversed_regularized = np.vstack((self.U_p,self.data_inversed_regularized))
+        self.g_r = np.linalg.pinv(self.data_inversed_regularized)
+        
+        #temp = []
+        #ur_tmep = np.array(self.u_r).T
+        T_ini_ur = np.kron(np.ones((self.T_ini,1)),np.reshape(self.u_r,(self.input_size,1)))
+        T_ini_yr = np.kron(np.ones((self.T_ini,1)), np.reshape(self.y_r,(self.output_size,1)))
+        T_f_ur = np.kron(np.ones((self.T_f,1)), np.reshape(self.u_r,(self.input_size,1)))
+        T_f_yr = np.kron(np.ones((self.T_f,1)), np.reshape(self.y_r,(self.output_size,1)))
+        temp = np.vstack([T_ini_ur,T_ini_yr,T_f_ur,T_f_yr])
+        
+        self.g_r = np.matmul(self.g_r,temp.flatten())
+        
+    def updateIn_Out_Measures(self,new_input_measure,new_output_measures,verbose = False):
+        &#34;&#34;&#34;
+        Will Update Inout and output measses. that is u_ini and y_ini.
+        Inputs:
+        -------
+        new_input_measure = new array of size 1 x m \n
+        new_output_measures = new array of size 1 x p\n
+        verbose = if action should be printed\n
+        Returns:
+        -------
+        None
+        &#34;&#34;&#34;
+        if(len(new_input_measure) != self.input_size or len(new_output_measures) != self.output_size):
+            print(&#34;Trying to update with wrong array sizes&#34;)
+        
+        if verbose == True:
+            inp = [round(i,2) for i in new_input_measure]
+            inp = [round(i,2) for i in new_input_measure]
+            outp = [round(i,2) for i in new_output_measures]
+
+            print(&#34;Updating in: &#34;,inp,&#34; out: &#34;,outp)
+
+        #self.u_ini = np.vstack((new_input_measure,self.u_ini))
+        #self.y_ini = np.vstack((new_output_measures,self.y_ini))
+        self.u_ini = np.vstack((self.u_ini,new_input_measure))
+        self.y_ini = np.vstack((self.y_ini,new_output_measures))
+
+        while(len(self.y_ini) &gt; self.T_ini):
+            self.u_ini = np.delete(self.u_ini,0,0)
+            self.y_ini = np.delete(self.y_ini,0,0)
+
+        # if y_ini is filled, only then update q, as it requires y_ini to be T_ini long
+        # if this is not checked then you can not initalize y_ini with this function in the beginning
+        if len(self.y_ini) == self.T_ini:
+            self.update_q()
+
+    def generateHankel_Collums(self,L,data_sequence):
+        &#34;&#34;&#34;
+        Sub-routine for generating the hakel matrix
+        &#34;&#34;&#34;
+        # this generates a hankel amtrix with the size : L x (data_length-L) as seen my each input sequence
+        # viewed with each data point it is:      L * input_size  X  (data_length-L)*input_size
+        # start with i:L+i -&gt; flatten -&gt; stick to right of H
+        T = len(data_sequence)
+        data_sequence = np.asarray(data_sequence)
+        sequence_length = len(data_sequence[0])
+        H = data_sequence[0:L,:].flatten()
+        for i in range(1,T-L):
+            one_collum = np.asarray(data_sequence[i:(L+i),:])
+            one_collum = one_collum.flatten()
+            H = np.column_stack((H, one_collum))
+        #print(&#34;H:&#34;,np.shape(H),&#34; == &#34;(L * sequence_length, len(data_sequence) - L))
+        return H
+
+    def test_g_validity(self):
+            in_check = np.matmul(self.U_p,self.g) - self.u_ini
+            out_check = np.matmul(self.Y_p,self.g) - self.y_ini
+            print(&#34;U_p*g - u_ini&#34;,in_check[0],&#34;\nY_p*g - y_ini:&#34;,out_check[0],&#34;\n&#34;)
+    
+    def check_data_sufficiency(self):
+        L = self.T_ini + self.T_f
+        if self.data_length &lt; ((self.input_size + 1)*L+1 ):
+            warnings.warn(&#34;Data Lenglth not Sufficient. N_data(&#34;+str(self.data_length)+&#34;) !&gt; (input_size(&#34;+str(self.input_size)+&#34;) + 1)*L(&#34;+str(L)+&#34;)+1&#34;)
+
+    def _Init_u_y_ini(self):
+        &#34;&#34;&#34;
+        Use only in __init__()
+        It is called in __init__() and does not have to called manually
+        sets u_ini and y_ini the last elements of input_sequence and output_sequence
+        This has to be done when the controller is initalized, but no recent system data is available.
+
+        &#34;&#34;&#34;
+        for i in range(self.T_ini-1):
+            self.u_ini = np.vstack((self.u_ini,self.input_sequence[self.data_length-self.T_ini+i]))
+            self.y_ini = np.vstack((self.y_ini,self.output_sequence[self.data_length-self.T_ini+i]))</code></pre>
+</details>
+<h3>Methods</h3>
+<dl>
+<dt id="DeePC_OSQP.Controller.ProblemSetup"><code class="name flex">
+<span>def <span class="ident">ProblemSetup</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def ProblemSetup(self):
+    self.prob = osqp.OSQP()
+    self.prob.setup(self.P, self.q, self.A, l = self.lb, u = self.ub,**self.SolverSettings) </code></pre>
+</details>
+</dd>
+<dt id="DeePC_OSQP.Controller.UnpackKWARGS"><code class="name flex">
+<span>def <span class="ident">UnpackKWARGS</span></span>(<span>self, keyword_arguments_list)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>This function unpack the **kwargs that are passed upon initialization and sets them
+if they are not already attributes.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def UnpackKWARGS(self,keyword_arguments_list):
+    &#34;&#34;&#34;
+    This function unpack the **kwargs that are passed upon initialization and sets them
+    if they are not already attributes.
+    &#34;&#34;&#34;
+
+    for key in keyword_arguments_list:
+        temp = getattr(self,key,None)
+        if temp is not None and key in self.settable_parameters:
+            setattr(self,key,keyword_arguments_list[key])
+        else:
+            print(&#34;Warning: Trying to set Parameter&#34;,key,&#34;, but it does not exitst! Settable parameters are:\n&#34;)
+            for key in self.settable_parameters:
+                print(key,&#34;: &#34;,self.settable_parameters[key])
+            print(&#34;\n&#34;)</code></pre>
+</details>
+</dd>
+<dt id="DeePC_OSQP.Controller.calculate_A"><code class="name flex">
+<span>def <span class="ident">calculate_A</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>0 0 U_p
+Up*g
+= [u_ini]
+</p>
+<p>-1 0 U_f
+u
+-u + Uf*g
+= [0]
+</p>
+<p>0 -1 Y_f
+y
+=
+-y + Yf*g
+= [0]
+</p>
+<p>1 0 0
+g
+u
+&lt; [u_upper]
+&gt; [u_lower] </p>
+<p>0 1 0
+y
+&lt; [y_upper]
+&gt; [y_lower] </p>
+<hr>
+<pre><code> A       x        l/u
+</code></pre>
+<p>FOR UNREGULARIZED:</p>
+<p>0
+0
+Up
+Up*g
+= u_ini
+</p>
+<p>0
+0
+Yp
+Yp*g
+= y_ini
+</p>
+<p>-1
+0
+Uf
+u
+-u + Uf*g
+= 0
+</p>
+<p>0
+-1
+Yf
+y
+=
+-y + Yf*g
+= 0
+</p>
+<p>1
+0
+0
+g
+u
+&lt; u_upper
+&gt; u_lower </p>
+<p>0
+1
+0
+y
+&lt; y_upper
+&gt; y_lower </p>
+<pre><code> A       x        l/u
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def calculate_A(self):
+    &#34;&#34;&#34;
+    0 0 U_p             Up*g          = [u_ini]                 \n
+    -1 0 U_f   u      -u + Uf*g     = [0]                     \n
+    0 -1 Y_f   y   =  -y + Yf*g     = [0]                     \n
+    1 0 0      g      u             &lt; [u_upper]   &gt; [u_lower] \n
+    0 1 0               y             &lt; [y_upper]   &gt; [y_lower] \n
+    ----- ----- ----- ----- ----- ----- ----- -----
+    \n
+        A       x        l/u                                \n
+
+    FOR UNREGULARIZED:\n
+    0   0  Up               Up*g     = u_ini                \n
+    0   0  Yp               Yp*g     = y_ini                \n
+   -1   0  Uf   u      -u + Uf*g     = 0                    \n
+    0  -1  Yf   y   =  -y + Yf*g     = 0                    \n
+    1   0  0    g       u             &lt; u_upper   &gt; u_lower \n
+    0   1  0            y             &lt; y_upper   &gt; y_lower \n
+    
+        A       x        l/u
+
+    &#34;&#34;&#34;
+    u_ZEROS_1_1 = np.zeros((self.input_size*self.T_ini,self.input_size*self.T_f))
+    y_ZEROS_1_2 = np.zeros((self.input_size*self.T_ini,self.output_size*self.T_f))
+
+    u_factor_2_1 = np.eye(self.input_size*self.T_f)*-1.0
+    u_ZEROS_2_2 = np.zeros((self.input_size*self.T_f,self.output_size*self.T_f))
+
+    y_ZEROS_3_1 = np.zeros((self.output_size*self.T_f,self.input_size*self.T_f))
+    y_factor_3_2 = np.eye(self.output_size*self.T_f)*-1.0
+
+    u_boundaries_4_1 = np.eye(self.input_size*self.T_f)
+    u_bouds_zeros_4_2 = np.zeros((self.input_size*self.T_f,self.input_size*self.T_f))
+
+    y_boundaries_5_2 = np.eye(self.output_size*self.T_f)
+    y_bouds_zeros_5_1 = np.zeros((self.output_size*self.T_f,self.output_size*self.T_f))
+
+    ZEROS_4_3 = np.zeros((self.input_size*self.T_f,(self.data_length - self.L)))
+    ZEROS_5_3 = np.zeros((self.output_size*self.T_f,(self.data_length - self.L)))
+
+    #print(np.shape(u_ZEROS_1_1),np.shape(y_ZEROS_1_2),np.shape(self.U_p))
+    #print(np.shape(u_factor_2_1),np.shape(u_ZEROS_2_2),np.shape(self.U_f))
+    #print(np.shape(y_ZEROS_3_1),np.shape(y_factor_3_2),np.shape(self.Y_f))
+    if self.regularize:
+        A = np.block([[u_ZEROS_1_1,y_ZEROS_1_2,self.U_p],
+                    [u_factor_2_1,u_ZEROS_2_2,self.U_f],
+                    [y_ZEROS_3_1,y_factor_3_2,self.Y_f],
+                    [u_boundaries_4_1,u_bouds_zeros_4_2,ZEROS_4_3],
+                    [y_bouds_zeros_5_1,y_boundaries_5_2,ZEROS_5_3]])
+    else:
+        #second line -&gt; adds Y_p
+        A = np.block([[u_ZEROS_1_1,y_ZEROS_1_2,self.U_p],
+                      [u_ZEROS_1_1,y_ZEROS_1_2,self.Y_p],
+                      [u_factor_2_1,u_ZEROS_2_2,self.U_f],
+                      [y_ZEROS_3_1,y_factor_3_2,self.Y_f],
+                      [u_boundaries_4_1,u_bouds_zeros_4_2,ZEROS_4_3],
+                      [y_bouds_zeros_5_1,y_boundaries_5_2,ZEROS_5_3]])
+
+    A = sparse.csc_matrix(2*A)
+    return A</code></pre>
+</details>
+</dd>
+<dt id="DeePC_OSQP.Controller.calculate_P"><code class="name flex">
+<span>def <span class="ident">calculate_P</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Calculates the matrix P for the Optimization problem</p>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>out</code></strong> :&ensp;<code>matrix q</code></dt>
+<dd>Matrix of given shape.</dd>
+</dl>
+<h2 id="notes">Notes</h2>
+<p>[R] [0] [0] </p>
+<p>[0] [Q] [0] </p>
+<p>[0] [0] [l_s * Y_p*Y_p + l_g * I]</p>
+<hr>
+<p>update only if Y_p, lambda_g, lambda_s, Q, R changes</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def calculate_P(self):
+    &#34;&#34;&#34;
+    Calculates the matrix P for the Optimization problem
+
+    Returns
+    -------
+    out : matrix q
+        Matrix of given shape.
+    Notes
+    -------
+    [R] [0] [0] \n
+    [0] [Q] [0] \n
+    [0] [0] [l_s * Y_p*Y_p + l_g * I]\n
+
+    -------
+    update only if Y_p, lambda_g, lambda_s, Q, R changes
+    &#34;&#34;&#34;
+    P_u = np.kron(np.eye(self.T_f), self.R) 
+    P_y = np.kron(np.eye(self.T_f), self.Q) 
+    #P_g = self.lambda_s * np.matmul(self.Y_p.T,self.Y_p) + np.eye(self.g_len)*self.lambda_g
+    P_g = np.zeros((self.g_len,self.g_len))
+    if self.regularize:
+       P_g = self.lambda_s * np.matmul(self.Y_p.T,self.Y_p)  + np.eye(self.g_len)*self.lambda_g
+    #print(&#34;P_u shape :&#34;,np.shape(P_u))
+    #print(&#34;P_y shape :&#34;,np.shape(P_y))
+    #print(&#34;P_g shape :&#34;,np.shape(P_g),P_g)
+    #print(&#34;x0 shape :&#34;,np.shape(x0))
+
+    zeros_1_2 = np.zeros((self.T_f*self.input_size, self.T_f*self.output_size))
+    zeros_1_3 = np.zeros((self.T_f*self.input_size, self.data_length-self.L))
+
+    zeros_2_1 = np.zeros((self.T_f*self.output_size, self.T_f*self.input_size))
+    zeros_2_3 = np.zeros((self.T_f*self.output_size,self.data_length-self.L))
+
+    zeros_3_1 = np.zeros((self.data_length-self.L, self.T_f*self.input_size))
+    zeros_3_2 = np.zeros((self.data_length-self.L, self.T_f*self.output_size))
+    P = np.block([[P_u,zeros_1_2,zeros_1_3],
+                 [zeros_2_1,P_y,zeros_2_3],
+                 [zeros_3_1,zeros_3_2,P_g]])
+    P = sparse.csc_matrix(2*P)
+    return P</code></pre>
+</details>
+</dd>
+<dt id="DeePC_OSQP.Controller.calculate_bounds_u_l"><code class="name flex">
+<span>def <span class="ident">calculate_bounds_u_l</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>upper and lower bounds. Update when constrinats are changed</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def calculate_bounds_u_l(self):
+    &#34;&#34;&#34;
+    upper and lower bounds. Update when constrinats are changed
+    
+    &#34;&#34;&#34;
+
+    y_zeros = [[0] for i in range(self.T_f*self.output_size)]
+
+    u_zeros = [[0] for i in range(self.T_f*self.input_size)]
+
+    lb_u_temp = np.reshape(self.in_constr_lb,(len(self.in_constr_lb),1))
+    lb_y_temp = np.reshape(self.out_constr_lb,(len(self.out_constr_lb),1))
+    lb_u = lb_u_temp
+    for i in range(self.T_f-1):
+        lb_u = np.vstack((lb_u_temp,lb_u))
+    lb_y = lb_y_temp
+    for i in range(self.T_f-1):
+        lb_y = np.vstack((lb_y_temp,lb_y))
+    
+    ub_u_temp = np.reshape(self.in_constr_ub,(len(self.in_constr_ub),1))
+    ub_y_temp = np.reshape(self.out_constr_ub,(len(self.out_constr_ub),1))
+    ub_u = ub_u_temp
+    for i in range(self.T_f-1):
+        ub_u = np.vstack((ub_u_temp,ub_u))
+    ub_y = ub_y_temp
+    for i in range(self.T_f-1):
+        ub_y = np.vstack((ub_y_temp,ub_y))
+
+    #lb_y = lb_y.flatten()
+    #lb_u = lb_u.flatten()
+    #print(np.shape(ub_y),np.shape(ub_u))
+    #ub_y = ub_y.flatten()
+    #ub_u = ub_u.flatten()
+    #print(np.shape(ub_y),np.shape(ub_u))
+    
+    u_ini_flat = np.reshape(self.u_ini,(self.input_size*self.T_ini,1))
+    y_ini_flat = np.reshape(self.y_ini,(self.output_size*self.T_ini,1))
+
+    if self.regularize:
+        lb = np.vstack((u_ini_flat,u_zeros,y_zeros,lb_u,lb_y))
+        ub = np.vstack((u_ini_flat,u_zeros,y_zeros,ub_u,ub_y))
+    else:
+        lb = np.vstack((u_ini_flat,y_ini_flat,u_zeros,y_zeros,lb_u,lb_y))
+        ub = np.vstack((u_ini_flat,y_ini_flat,u_zeros,y_zeros,ub_u,ub_y))
+    
+    self.ub = ub
+    self.lb = lb</code></pre>
+</details>
+</dd>
+<dt id="DeePC_OSQP.Controller.calculate_q"><code class="name flex">
+<span>def <span class="ident">calculate_q</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Calculates the matrix q for the Optimization problem
+Returns</p>
+<hr>
+<dl>
+<dt><strong><code>out</code></strong> :&ensp;<code>matrix q</code></dt>
+<dd>
+<p>&nbsp;</p>
+<h2 id="matrix-of-given-shape">Matrix of given shape.</h2>
+<p>update when y_ini, y_r, u_r, Q, R, lambda_g, lambda_s changes
+-&gt;in update_y_r
+-&gt;in update_in_out_measures</p>
+</dd>
+</dl>
+<p>q = [-2u_r<em>R &hellip; -2y_r</em>Q&hellip;(-2<em>l_d</em>y_ini<em>Y_p + -2</em>l_g<em>gr^T)....] u
+=
+u_r</em>R<em>u
++
+y_r</em>Q<em>y
++
+y_ini</em>Y_p<em>g - gr</em>g
+y
+g
+FOR UREGULARIZED
+q = [-2u_r<em>R &hellip; -2y_r</em>Q&hellip;0....]
+u
+=
+-u_r<em>R</em>u
++
+-y_r<em>Q</em>y
++
+0&hellip;
+y
+g</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def calculate_q(self):
+    &#34;&#34;&#34;
+    Calculates the matrix q for the Optimization problem
+    Returns
+    -------
+    out : matrix q
+          Matrix of given shape.
+    -------
+    update when y_ini, y_r, u_r, Q, R, lambda_g, lambda_s changes
+        -&gt;in update_y_r
+        -&gt;in update_in_out_measures
+
+    q = [-2u_r*R ... -2y_r*Q...(-2*l_d*y_ini*Y_p + -2*l_g*gr^T)....] u      =  u_r*R*u  +  y_r*Q*y  +  y_ini*Y_p*g - gr*g
+                                                    y
+                                                    g
+    FOR UREGULARIZED
+    q = [-2u_r*R ... -2y_r*Q...0....]               u             =  -u_r*R*u  +  -y_r*Q*y  +  0...
+                                                    y
+                                                    g
+    &#34;&#34;&#34;
+    factor = -2 #TODO: -2 is the factor form the equation but is it eally needed?
+    temp1 = factor*np.matmul(np.array(self.u_r),self.R)
+    q_u = temp1
+    for i in range(1,self.T_f):
+        q_u = np.hstack((temp1,q_u))
+    temp2 = factor*np.matmul(np.array(self.y_r),self.Q) 
+    q_y = temp2
+    for i in range(1,self.T_f):
+        q_y = np.hstack((temp2,q_y))
+    #print(q_y)
+    #print(&#34;self.y_ini&#34;,np.shape(self.y_ini),&#34; self.Y_p&#34;,np.shape(self.Y_p))
+    #print(np.shape(self.y_ini.flatten().T),np.shape(self.y_ini.flatten()))
+    q_g = np.zeros(self.g_len)
+    if self.regularize:
+        q_g_first_term = factor*self.lambda_s*np.matmul(self.y_ini.flatten().T,self.Y_p) 
+        q_g_second_term = factor*self.lambda_g*self.g_r.T 
+        q_g = q_g_first_term + q_g_second_term
+    #print(&#34;q_u&#34;,np.shape(q_u))
+    #print(&#34;q_y&#34;,np.shape(q_y))
+    #print(&#34;q_g_first_term&#34;,np.shape(q_g_first_term))
+    #print(&#34;q_g_second_term&#34;,np.shape(q_g_second_term))
+
+    q = np.hstack((q_u,q_y,q_g))
+    #q = np.hstack((q_u,q))
+    #print(&#34;q shape: &#34;,np.shape(q))
+    return q</code></pre>
+</details>
+</dd>
+<dt id="DeePC_OSQP.Controller.check_data_sufficiency"><code class="name flex">
+<span>def <span class="ident">check_data_sufficiency</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def check_data_sufficiency(self):
+    L = self.T_ini + self.T_f
+    if self.data_length &lt; ((self.input_size + 1)*L+1 ):
+        warnings.warn(&#34;Data Lenglth not Sufficient. N_data(&#34;+str(self.data_length)+&#34;) !&gt; (input_size(&#34;+str(self.input_size)+&#34;) + 1)*L(&#34;+str(L)+&#34;)+1&#34;)</code></pre>
+</details>
+</dd>
+<dt id="DeePC_OSQP.Controller.generateHankel_Collums"><code class="name flex">
+<span>def <span class="ident">generateHankel_Collums</span></span>(<span>self, L, data_sequence)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Sub-routine for generating the hakel matrix</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def generateHankel_Collums(self,L,data_sequence):
+    &#34;&#34;&#34;
+    Sub-routine for generating the hakel matrix
+    &#34;&#34;&#34;
+    # this generates a hankel amtrix with the size : L x (data_length-L) as seen my each input sequence
+    # viewed with each data point it is:      L * input_size  X  (data_length-L)*input_size
+    # start with i:L+i -&gt; flatten -&gt; stick to right of H
+    T = len(data_sequence)
+    data_sequence = np.asarray(data_sequence)
+    sequence_length = len(data_sequence[0])
+    H = data_sequence[0:L,:].flatten()
+    for i in range(1,T-L):
+        one_collum = np.asarray(data_sequence[i:(L+i),:])
+        one_collum = one_collum.flatten()
+        H = np.column_stack((H, one_collum))
+    #print(&#34;H:&#34;,np.shape(H),&#34; == &#34;(L * sequence_length, len(data_sequence) - L))
+    return H</code></pre>
+</details>
+</dd>
+<dt id="DeePC_OSQP.Controller.getInputOutputPrediction"><code class="name flex">
+<span>def <span class="ident">getInputOutputPrediction</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><h2 id="inputs">Inputs:</h2>
+<p>None</p>
+<h2 id="returns">Returns:</h2>
+<p>This returns the predictions after setting the controller up correctly.
+u,y,u_star,y_star,g </p>
+<p>u = Suggested inputs. Array of size T_f x m
+</p>
+<p>y = Output predictions. Array of size T_f x p </p>
+<p>u_star = same as u but calculated by U_f x g
+</p>
+<p>y_star = same as y but calculated by Y_f x g
+</p>
+<p>g = the 'learned' state weights</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def getInputOutputPrediction(self):
+    &#34;&#34;&#34;
+    Inputs:
+    -------
+    None\n
+    Returns:
+    -------
+    This returns the predictions after setting the controller up correctly.
+    u,y,u_star,y_star,g \n
+    u = Suggested inputs. Array of size T_f x m   \n
+    y = Output predictions. Array of size T_f x p \n
+    u_star = same as u but calculated by U_f x g  \n
+    y_star = same as y but calculated by Y_f x g  \n
+    g = the &#39;learned&#39; state weights               \n
+    &#34;&#34;&#34;
+    x0_result = self.solve_for_x_regularized()
+    #x0_result = self.opt_solve_for_x()
+    g = x0_result[self.T_f*self.input_size + self.T_f*self.output_size : ]
+    self.g = g
+    u = x0_result[:self.T_f*self.input_size]
+    u_star = np.reshape(np.matmul(self.U_f,g),(self.T_f,self.input_size))
+    
+    y =  x0_result[self.T_f*self.input_size : self.T_f*self.input_size + self.T_f*self.output_size]
+    y_star = np.reshape(np.matmul(self.Y_f,g),(self.T_f,self.output_size))
+
+    u = np.reshape(u, (self.T_f,self.input_size))
+    u_star = np.reshape(u_star, (self.T_f,self.input_size))
+    y = np.reshape(y, (self.T_f,self.output_size))
+    y_star = np.reshape(y_star, (self.T_f,self.output_size))
+
+
+    return u,y,u_star,y_star,g</code></pre>
+</details>
+</dd>
+<dt id="DeePC_OSQP.Controller.recalculate_g_r"><code class="name flex">
+<span>def <span class="ident">recalculate_g_r</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Will recalculate the regularization parameters g_r().
+called when updated y_r, u_r
+Inputs:</p>
+<hr>
+<p>None </p>
+<h2 id="returns">Returns:</h2>
+<p>None</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def recalculate_g_r(self):
+    &#34;&#34;&#34;
+    Will recalculate the regularization parameters g_r().
+    called when updated y_r, u_r
+    Inputs:
+    -------
+    None \n
+    Returns:
+    -------
+    None
+    &#34;&#34;&#34;
+    self.g_r = []
+    self.data_inversed_regularized = np.vstack((self.U_p,self.Y_p,self.U_f,self.Y_f))    
+    #self.data_inversed_regularized = np.vstack((self.Y_p,self.data_inversed_regularized))
+    #self.data_inversed_regularized = np.vstack((self.U_p,self.data_inversed_regularized))
+    self.g_r = np.linalg.pinv(self.data_inversed_regularized)
+    
+    #temp = []
+    #ur_tmep = np.array(self.u_r).T
+    T_ini_ur = np.kron(np.ones((self.T_ini,1)),np.reshape(self.u_r,(self.input_size,1)))
+    T_ini_yr = np.kron(np.ones((self.T_ini,1)), np.reshape(self.y_r,(self.output_size,1)))
+    T_f_ur = np.kron(np.ones((self.T_f,1)), np.reshape(self.u_r,(self.input_size,1)))
+    T_f_yr = np.kron(np.ones((self.T_f,1)), np.reshape(self.y_r,(self.output_size,1)))
+    temp = np.vstack([T_ini_ur,T_ini_yr,T_f_ur,T_f_yr])
+    
+    self.g_r = np.matmul(self.g_r,temp.flatten())</code></pre>
+</details>
+</dd>
+<dt id="DeePC_OSQP.Controller.solve_for_x_regularized"><code class="name flex">
+<span>def <span class="ident">solve_for_x_regularized</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def solve_for_x_regularized(self):
+    res = self.prob.solve()
+    return res.x</code></pre>
+</details>
+</dd>
+<dt id="DeePC_OSQP.Controller.test_g_validity"><code class="name flex">
+<span>def <span class="ident">test_g_validity</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def test_g_validity(self):
+        in_check = np.matmul(self.U_p,self.g) - self.u_ini
+        out_check = np.matmul(self.Y_p,self.g) - self.y_ini
+        print(&#34;U_p*g - u_ini&#34;,in_check[0],&#34;\nY_p*g - y_ini:&#34;,out_check[0],&#34;\n&#34;)</code></pre>
+</details>
+</dd>
+<dt id="DeePC_OSQP.Controller.updateControlCost_R"><code class="name flex">
+<span>def <span class="ident">updateControlCost_R</span></span>(<span>self, new_R)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>The Control Cost matrix R can be updated. Will notify if wrong Size</p>
+<p>It will update P and q aswell
+Inputs:</p>
+<hr>
+<p>new_R = array of new Control Cost matrix </p>
+<h2 id="returns">Returns:</h2>
+<p>None</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def updateControlCost_R(self,new_R):
+    &#34;&#34;&#34;
+    The Control Cost matrix R can be updated. Will notify if wrong Size\n
+    It will update P and q aswell
+    Inputs:
+    -------
+    new_R = array of new Control Cost matrix \n
+    Returns:
+    -------
+    None
+    &#34;&#34;&#34;
+    if np.shape(new_R) != np.shape(self.R):
+        print(&#34;Wrong dimension for updatad Control Cost&#34;)
+    else:
+        self.R = new_R
+        self.update_P()
+        self.update_q()</code></pre>
+</details>
+</dd>
+<dt id="DeePC_OSQP.Controller.updateIOConstrains"><code class="name flex">
+<span>def <span class="ident">updateIOConstrains</span></span>(<span>self, input_lb, input_ub, output_lb, output_ub)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def updateIOConstrains(self,input_lb,input_ub,output_lb,output_ub):
+    def warning_mesg(in_out,lower_upper):
+        warnings.warn(in_out,&#34; constrains for the &#34;,lower_upper,&#34; bound are not corrct Length. NOT Updated&#34;)
+    if len(self.in_constr_lb) == len(input_lb):
+        self.in_constr_lb = np.array(input_lb)
+    else: warning_mesg(&#34;In&#34;,&#34;lower&#34;)
+    if len(self.in_constr_ub) == len(input_ub):
+        self.in_constr_ub = np.array(input_ub)
+    else: warning_mesg(&#34;In&#34;,&#34;upper&#34;)
+    if len(self.out_constr_lb) == len(output_lb):
+        self.out_constr_lb = np.array(output_lb)
+    else: warning_mesg(&#34;Out&#34;,&#34;lower&#34;)
+    if len(self.out_constr_ub) == len(output_ub):
+        self.out_constr_ub = np.array(output_ub)
+    else: warning_mesg(&#34;Out&#34;,&#34;upper&#34;)
+    
+    self.calculate_bounds_u_l()
+    self.prob.update(l = self.lb,u = self.ub)</code></pre>
+</details>
+</dd>
+<dt id="DeePC_OSQP.Controller.updateIn_Out_Measures"><code class="name flex">
+<span>def <span class="ident">updateIn_Out_Measures</span></span>(<span>self, new_input_measure, new_output_measures, verbose=False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Will Update Inout and output measses. that is u_ini and y_ini.
+Inputs:</p>
+<hr>
+<p>new_input_measure = new array of size 1 x m </p>
+<p>new_output_measures = new array of size 1 x p</p>
+<p>verbose = if action should be printed</p>
+<h2 id="returns">Returns:</h2>
+<p>None</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def updateIn_Out_Measures(self,new_input_measure,new_output_measures,verbose = False):
+    &#34;&#34;&#34;
+    Will Update Inout and output measses. that is u_ini and y_ini.
+    Inputs:
+    -------
+    new_input_measure = new array of size 1 x m \n
+    new_output_measures = new array of size 1 x p\n
+    verbose = if action should be printed\n
+    Returns:
+    -------
+    None
+    &#34;&#34;&#34;
+    if(len(new_input_measure) != self.input_size or len(new_output_measures) != self.output_size):
+        print(&#34;Trying to update with wrong array sizes&#34;)
+    
+    if verbose == True:
+        inp = [round(i,2) for i in new_input_measure]
+        inp = [round(i,2) for i in new_input_measure]
+        outp = [round(i,2) for i in new_output_measures]
+
+        print(&#34;Updating in: &#34;,inp,&#34; out: &#34;,outp)
+
+    #self.u_ini = np.vstack((new_input_measure,self.u_ini))
+    #self.y_ini = np.vstack((new_output_measures,self.y_ini))
+    self.u_ini = np.vstack((self.u_ini,new_input_measure))
+    self.y_ini = np.vstack((self.y_ini,new_output_measures))
+
+    while(len(self.y_ini) &gt; self.T_ini):
+        self.u_ini = np.delete(self.u_ini,0,0)
+        self.y_ini = np.delete(self.y_ini,0,0)
+
+    # if y_ini is filled, only then update q, as it requires y_ini to be T_ini long
+    # if this is not checked then you can not initalize y_ini with this function in the beginning
+    if len(self.y_ini) == self.T_ini:
+        self.update_q()</code></pre>
+</details>
+</dd>
+<dt id="DeePC_OSQP.Controller.updateReferenceInput"><code class="name flex">
+<span>def <span class="ident">updateReferenceInput</span></span>(<span>self, new_u_r)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>The reference input u_r can be updated. Will notify if wrong Size</p>
+<h2 id="inputs">Inputs:</h2>
+<p>new_u_r = array of new reference inout </p>
+<h2 id="returns">Returns:</h2>
+<p>None</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def updateReferenceInput(self,new_u_r):
+    &#34;&#34;&#34;
+    The reference input u_r can be updated. Will notify if wrong Size\n
+    Inputs:
+    -------
+    new_u_r = array of new reference inout \n
+    Returns:
+    -------
+    None
+    &#34;&#34;&#34;
+    if len(new_u_r) != self.input_size:
+        print(&#34;Wrong size for reference point. Must be: &#34;,self.output_size,&#34;\n&#34;)
+    self.u_r = new_u_r
+    self.recalculate_g_r
+    self.update_q()</code></pre>
+</details>
+</dd>
+<dt id="DeePC_OSQP.Controller.updateReferenceWaypoint"><code class="name flex">
+<span>def <span class="ident">updateReferenceWaypoint</span></span>(<span>self, new_y_r)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>The reference output y_r can be updated. Will notify if wrong Size</p>
+<h2 id="inputs">Inputs:</h2>
+<p>new_y_r = array of new reference output </p>
+<h2 id="returns">Returns:</h2>
+<p>None</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def updateReferenceWaypoint(self,new_y_r):
+    &#34;&#34;&#34;
+    The reference output y_r can be updated. Will notify if wrong Size\n
+    Inputs:
+    -------
+    new_y_r = array of new reference output \n
+    Returns:
+    -------
+    None
+    &#34;&#34;&#34;
+    if len(new_y_r) != self.output_size:
+        print(&#34;Wrong size for reference point. Must be: &#34;,self.output_size,&#34;\n&#34;)
+    self.y_r = new_y_r
+    self.recalculate_g_r
+    self.update_q()</code></pre>
+</details>
+</dd>
+<dt id="DeePC_OSQP.Controller.updateTrackingCost_Q"><code class="name flex">
+<span>def <span class="ident">updateTrackingCost_Q</span></span>(<span>self, new_Q)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>The Tracking Cost matrix Q can be updated. Will notify if wrong Size</p>
+<p>It will update P and q aswell
+Inputs:</p>
+<hr>
+<p>new_Q = array of new
+Tracking Cost matrix </p>
+<h2 id="returns">Returns:</h2>
+<p>None</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def updateTrackingCost_Q(self,new_Q):
+    &#34;&#34;&#34;
+    The Tracking Cost matrix Q can be updated. Will notify if wrong Size\n
+    It will update P and q aswell
+    Inputs:
+    -------
+    new_Q = array of new  Tracking Cost matrix \n
+    Returns:
+    -------
+    None
+    &#34;&#34;&#34;
+    if np.shape(new_Q) != np.shape(new_Q):
+        print(&#34;Wrong dimension for updatad Control Cost&#34;)
+    else:
+        self.Q = new_Q
+        self.update_P()
+        self.update_q()</code></pre>
+</details>
+</dd>
+<dt id="DeePC_OSQP.Controller.update_P"><code class="name flex">
+<span>def <span class="ident">update_P</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Call when you need to update the P matrix because you updated the data</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def update_P(self):
+    &#34;&#34;&#34;
+    Call when you need to update the P matrix because you updated the data
+    &#34;&#34;&#34;
+    self.P = self.calculate_P()
+    self.ProblemSetup()</code></pre>
+</details>
+</dd>
+<dt id="DeePC_OSQP.Controller.update_q"><code class="name flex">
+<span>def <span class="ident">update_q</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def update_q(self):
+    self.q = self.calculate_q()
+    self.ProblemSetup()</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul>
+<li><a href="#_1"></a></li>
+<li><a href="#_2"></a></li>
+<li><a href="#start-date-1102021">Start Date: 1.10.2021</a></li>
+<li><a href="#run-with-python-version-373">Run with Python version 3.7.3</a></li>
+<li><a href="#_3"></a></li>
+<li><a href="#_4"></a></li>
+<li><a href="#contact-martinbuchschusterde">contact: martin@buchschuster.de</a><ul>
+<li><a href="#_5"></a></li>
+</ul>
+</li>
+</ul>
+</div>
+<ul id="index">
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="DeePC_OSQP.Controller" href="#DeePC_OSQP.Controller">Controller</a></code></h4>
+<ul class="">
+<li><code><a title="DeePC_OSQP.Controller.ProblemSetup" href="#DeePC_OSQP.Controller.ProblemSetup">ProblemSetup</a></code></li>
+<li><code><a title="DeePC_OSQP.Controller.UnpackKWARGS" href="#DeePC_OSQP.Controller.UnpackKWARGS">UnpackKWARGS</a></code></li>
+<li><code><a title="DeePC_OSQP.Controller.calculate_A" href="#DeePC_OSQP.Controller.calculate_A">calculate_A</a></code></li>
+<li><code><a title="DeePC_OSQP.Controller.calculate_P" href="#DeePC_OSQP.Controller.calculate_P">calculate_P</a></code></li>
+<li><code><a title="DeePC_OSQP.Controller.calculate_bounds_u_l" href="#DeePC_OSQP.Controller.calculate_bounds_u_l">calculate_bounds_u_l</a></code></li>
+<li><code><a title="DeePC_OSQP.Controller.calculate_q" href="#DeePC_OSQP.Controller.calculate_q">calculate_q</a></code></li>
+<li><code><a title="DeePC_OSQP.Controller.check_data_sufficiency" href="#DeePC_OSQP.Controller.check_data_sufficiency">check_data_sufficiency</a></code></li>
+<li><code><a title="DeePC_OSQP.Controller.generateHankel_Collums" href="#DeePC_OSQP.Controller.generateHankel_Collums">generateHankel_Collums</a></code></li>
+<li><code><a title="DeePC_OSQP.Controller.getInputOutputPrediction" href="#DeePC_OSQP.Controller.getInputOutputPrediction">getInputOutputPrediction</a></code></li>
+<li><code><a title="DeePC_OSQP.Controller.recalculate_g_r" href="#DeePC_OSQP.Controller.recalculate_g_r">recalculate_g_r</a></code></li>
+<li><code><a title="DeePC_OSQP.Controller.solve_for_x_regularized" href="#DeePC_OSQP.Controller.solve_for_x_regularized">solve_for_x_regularized</a></code></li>
+<li><code><a title="DeePC_OSQP.Controller.test_g_validity" href="#DeePC_OSQP.Controller.test_g_validity">test_g_validity</a></code></li>
+<li><code><a title="DeePC_OSQP.Controller.updateControlCost_R" href="#DeePC_OSQP.Controller.updateControlCost_R">updateControlCost_R</a></code></li>
+<li><code><a title="DeePC_OSQP.Controller.updateIOConstrains" href="#DeePC_OSQP.Controller.updateIOConstrains">updateIOConstrains</a></code></li>
+<li><code><a title="DeePC_OSQP.Controller.updateIn_Out_Measures" href="#DeePC_OSQP.Controller.updateIn_Out_Measures">updateIn_Out_Measures</a></code></li>
+<li><code><a title="DeePC_OSQP.Controller.updateReferenceInput" href="#DeePC_OSQP.Controller.updateReferenceInput">updateReferenceInput</a></code></li>
+<li><code><a title="DeePC_OSQP.Controller.updateReferenceWaypoint" href="#DeePC_OSQP.Controller.updateReferenceWaypoint">updateReferenceWaypoint</a></code></li>
+<li><code><a title="DeePC_OSQP.Controller.updateTrackingCost_Q" href="#DeePC_OSQP.Controller.updateTrackingCost_Q">updateTrackingCost_Q</a></code></li>
+<li><code><a title="DeePC_OSQP.Controller.update_P" href="#DeePC_OSQP.Controller.update_P">update_P</a></code></li>
+<li><code><a title="DeePC_OSQP.Controller.update_q" href="#DeePC_OSQP.Controller.update_q">update_q</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+</footer>
+</body>
+</html>

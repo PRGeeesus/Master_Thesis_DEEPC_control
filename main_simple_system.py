@@ -8,58 +8,100 @@
 #       x(k +1) = y(k)
 
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
+
 import random
-import DeePC_OSQP as C3
+import DeePC_OSQP as DeePC
 import numpy as np
 import SimpleSystems
 import time
 from carlaHelper import readFromCSV
 import csv
 import time
-#import control
+
 from simple_pid import PID
-import SimpleSystemsAnimations	
+import SimpleSystemsAnimations
+import SimpleSystems
+from SimpleSystems import InvertedPendulum_MPC,ISystem, FederMasseSystem, Chessna2, FederMasseSystem_MPC,InvertedPendulumSS ,saveAsCSV ,readFromCSV
 
+import BLDC_MOTOR
 
-def main():
-    system1 = SimpleSystem1(0,0,1)
-    input = 0.5
-    for i in range(1,50):
+def ISystem_1(l_s,l_g,Q,R):
+    system1 = ISystem(0,0,1)
+    input = 0.0
+    time_t = [0]
+    """
+    for i in range(1,100):
+        
         #system1.OneTick(input)
-        system1.OneTick((random.random()-0.5)*2)
-        system1.OneTick(random.random())
+        #if i > 15 < 30:
+        #    input = 0.0
+        #if i >=30:
+        #    input = 1
+        
+        if i%10 ==0:
+            input = (random.random()-0.5)*2
+        system1.OneTick(input)
+        #system1.OneTick(random.random())
         #system1.OneTick(np.abs(np.sin(i*0.1)))
+        time_t.append(i)
+    """
+    filename = "I-SYSTEM-DATA"
+    #saveAsCSV(filename,system1.SystemHistory)
+    
+    data_2 = readFromCSV(filename)
+
     outputs = system1.SystemHistory[:,1]
-    #plt.plot(outputs)
-    #plt.show()
+    inputs = system1.SystemHistory[:,0]
+    """
+    fig, ax1 = plt.subplots()
+    plt.title("Integrating System")
+    ax1.set_xlabel('time')
+    ax1.set_ylabel('Output', c='r')
+    ax1.plot(time_t, outputs, c='r',label = "Output",linewidth=3)
+    ax1.tick_params(axis='y', labelcolor='c')
+    ax1.legend(loc=2)
+    plt.legend()
+    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+    color = 'tab:blue'
+    ax2.set_ylabel('Input', color=color)  # we already handled the x-label with ax1
+    ax2.plot(time_t, inputs, color=color, label = "Input")
+    ax2.tick_params(axis='y', labelcolor=color)
+
+    fig.tight_layout()  # otherwise the right y-label is slightly clipped
+    ax2.legend(loc=1)
+    plt.show()
+    """
 
     original_data = outputs
 
     T_ini =3# über 3 = schwingen, unter 3 = linearer
-    T_f = 10
-    Controller_settings = {"lambda_s":20,
-                           "lambda_g":1,
-                            "out_constr_lb":[-np.inf],
-                            "out_constr_ub":[np.inf],
+    T_f = 7
+    Controller_settings = {"lambda_s":l_s,
+                           "lambda_g":l_g,
+                            "out_constr_lb":[-30],
+                            "out_constr_ub":[30],
                             "in_constr_lb":[-1],
                             "in_constr_ub":[1],
-                            "regularize":True}
+                            "regularize":True,
+                            "verbose":True}
 
-    ctrl = C3.Controller(system1.SystemHistory,T_ini,T_f,1,1,**Controller_settings)
+    ctrl = DeePC.Controller(data_2,T_ini,T_f,1,1,**Controller_settings)
     SOLLWERT = 15
     ctrl.updateReferenceWaypoint([SOLLWERT])
     #ctrl.updateReferenceInput([0.5])
  
-    ctrl.updateControlCost_R([[1]]) # as I increase, only small changes in control
-    ctrl.updateTrackingCost_Q([[1]]) #as I increase, prediction gets closer to SOLLWERT?
+    ctrl.updateControlCost_R([[R]]) # as I increase, only small changes in control
+    ctrl.updateTrackingCost_Q([[Q]]) #as I increase, prediction gets closer to SOLLWERT?
     #ctrl.updateReferenceInput([0.5])
     system1.resetSystem()
+
     predictions_y = [0]
     applied_inputs = []
     soll = [SOLLWERT]
     u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
-    prediction = 1
-    control_input = 1
+    prediction = 0
+    control_input = 0
     for i in range(1,100):
         if i == 50:
             ctrl.updateReferenceWaypoint([10])
@@ -77,9 +119,10 @@ def main():
         #ctrl.test_g_validity()
     
     outputs2 = system1.SystemHistory[:,1]
-    track_mean,track_std = SimpleSystems.Evaluate_Tracking_Accuarcy(outputs2,predictions_y)
-    control_mean,control_std = SimpleSystems.Evaluate_Control_Accuarcy(soll,outputs2)
-
+    track_mean,track_std = SimpleSystems.Evaluate_Tracking_Accuarcy(outputs2[20:],predictions_y[20:])
+    control_mean,control_std = SimpleSystems.Evaluate_Control_Accuarcy(soll[20:],outputs2[20:])
+    #return track_mean,control_mean
+    
     fig, ax1 = plt.subplots()
     titlesting = "T_ini:" + str(T_ini) + " T_f:" + str(T_f) +" lg:" + str(ctrl.lambda_g) + " ls:"+ str(ctrl.lambda_s)
     plt.title(titlesting)
@@ -98,6 +141,134 @@ def main():
 
     plt.legend(loc=4)
     plt.show()
+    
+def ISystem_scout_lg_ls():
+    tracking_means = []
+    control_means = []
+    ls_factor = 20
+    ls_scale = 200
+    
+    #ls_range = range(1,ls_scale,ls_factor)
+    ls_range  = [10**i for i in range(4,10)]
+    lg_factor = 1000
+    lg_scale = 300000
+    #lg_range = range(1,lg_scale,lg_factor)
+    lg_range = [10**i for i in range(12)]
+    
+    for i in ls_range:
+        temp1 = []
+        temp2 = []
+        for j in lg_range:
+            tm,cm = ISystem_1(i,j)
+            temp1.append(tm)
+            temp2.append(cm)
+        tracking_means.append(temp1)
+        control_means.append(temp2)
+    print("tracking_means len:",len(tracking_means)," type: ",type(tracking_means), " shape: ",np.shape(tracking_means))
+    tracking_means = np.asarray(tracking_means)
+    control_means = np.asarray(control_means)
+    print("tracking_means len:",len(tracking_means)," type: ",type(tracking_means), " shape: ",np.shape(tracking_means))
+    
+    filename = "tracking_mean_ls_lg_scan_i_system"
+    saveAsCSV(filename,tracking_means)
+    filename = "control_means_ls_lg_scan_i_system"
+    saveAsCSV(filename,control_means)
+
+
+    fig, ax = plt.subplots()
+    im = ax.imshow(tracking_means,cmap='YlGn')
+    ax.set_ylabel("lambda s")
+    ax.set_xlabel("lambda g")
+    ax.set_yticks(np.arange(tracking_means.shape[0]), minor=False)
+    ax.set_xticks(np.arange(tracking_means.shape[1]), minor=False)
+    plt.colorbar(im)
+    ax.set_xticklabels(lg_range,rotation=90)
+    #plt.ticklabel_format(axis='both', style='sci', scilimits=(-2,2))
+    scientific_formatter = FuncFormatter(scientific)
+    ax.xaxis.set_major_formatter(scientific_formatter)
+    #ax.yaxis.set_major_formatter(scientific_formatter)
+    
+    ax.set_yticklabels(ls_range)
+
+    ax.invert_yaxis()
+    ax.set_title("Mean Tracking Difference of Lambda g vs Lambda s")
+    fig.tight_layout()
+
+    plt.show()
+
+
+def ISystem_scout_Q_R():
+    tracking_means = []
+    control_means = []
+    ls_factor = 20
+    ls_scale = 200
+    
+    #ls_range = range(1,ls_scale,ls_factor)
+    Q  = [10**i for i in range(1,10)]
+    R  = [10**i for i in range(1,10)]
+    
+    for i in R:
+        temp1 = []
+        temp2 = []
+        for j in Q:
+            tm,cm = ISystem_1(1,1,j,i)
+            temp1.append(tm)
+            temp2.append(cm)
+        tracking_means.append(temp1)
+        control_means.append(temp2)
+    print("tracking_means len:",len(tracking_means)," type: ",type(tracking_means), " shape: ",np.shape(tracking_means))
+    tracking_means = np.asarray(tracking_means)
+    control_means = np.asarray(control_means)
+    print("tracking_means len:",len(tracking_means)," type: ",type(tracking_means), " shape: ",np.shape(tracking_means))
+    
+    filename = "tracking_mean_ls_lg_scan_i_system"
+    saveAsCSV(filename,tracking_means)
+    filename = "control_means_ls_lg_scan_i_system"
+    saveAsCSV(filename,control_means)
+
+
+    fig, ax = plt.subplots()
+    im = ax.imshow(tracking_means,cmap='YlGn')
+    ax.set_ylabel("R")
+    ax.set_xlabel("Q")
+    ax.set_yticks(np.arange(tracking_means.shape[0]), minor=False)
+    ax.set_xticks(np.arange(tracking_means.shape[1]), minor=False)
+    plt.colorbar(im)
+    ax.set_xticklabels(Q,rotation=90)
+    #plt.ticklabel_format(axis='both', style='sci', scilimits=(-2,2))
+    scientific_formatter = FuncFormatter(scientific)
+    ax.xaxis.set_major_formatter(scientific_formatter)
+    #ax.yaxis.set_major_formatter(scientific_formatter)
+    
+    ax.set_yticklabels(R)
+
+    ax.invert_yaxis()
+    ax.set_title("Mean Tracking Difference of Q vs R")
+    fig.tight_layout()
+
+    plt.show()
+
+    fig, ax = plt.subplots()
+    im = ax.imshow(control_means,cmap='YlGn')
+    ax.set_ylabel("R")
+    ax.set_xlabel("Q")
+    ax.set_yticks(np.arange(control_means.shape[0]), minor=False)
+    ax.set_xticks(np.arange(control_means.shape[1]), minor=False)
+    plt.colorbar(im)
+    ax.set_xticklabels(Q,rotation=90)
+    #plt.ticklabel_format(axis='both', style='sci', scilimits=(-2,2))
+    scientific_formatter = FuncFormatter(scientific)
+    ax.xaxis.set_major_formatter(scientific_formatter)
+    #ax.yaxis.set_major_formatter(scientific_formatter)
+    
+    ax.set_yticklabels(R)
+
+    ax.invert_yaxis()
+    ax.set_title("Mean Output to Setpoint Difference of Q vs R")
+    fig.tight_layout()
+
+    plt.show()    
+
 
 def main2():
     SOLLWERT = 10
@@ -233,7 +404,7 @@ def main4():
 
     T_ini = 6# über 3 = schwingen, unter 3 = linearer
     T_f = 25
-    ctrl = C3.Controller(system1.SystemHistory,T_ini,T_f,1,1)
+    ctrl = DEEPC.Controller(system1.SystemHistory,T_ini,T_f,1,1)
     SOLLWERT = 25
     ctrl.updateReferenceWaypoint([SOLLWERT])
     #ctrl.updateReferenceInput([0.5])
@@ -279,6 +450,79 @@ def main4():
     ax2.set_ylabel("Inputs")
     ax2.plot(applied_inputs,label="applied inputs",c="b")
     ax2.set_ylim([-2, 2])
+
+    plt.legend(loc=4)
+    plt.show()
+
+def InvertedPendulum_MPC_WITHOUT_CART():
+    timesteps = 0.1
+    sim_time = 20
+    time_horizon = int(2/timesteps)
+    SOLLWERT = 1
+    input_force = 5.0
+    sys = InvertedPendulum_MPC(timesteps,time_horizon,SOLLWERT)
+    
+    
+    # SimpleSystems.saveAsCSV("Feder_Masse_"+str(len(data2)), data2)
+    #data = SimpleSystems.readFromCSV("Feder_Masse_101")
+   
+    ### PLOTTING COLLECTED DATA
+    # fig, ax1 = plt.subplots()
+    # titlesting = "FederMasse System - Sprung"
+    # plt.title(titlesting)
+    # ax1.set_ylabel("length")
+    # #ax1.plot(time,predictions,label='ALt_Pred.',c="r")
+    # ax1.plot(timeline,x_out,label='x_out',c="g")
+    # #ax1.set_ylim([4500, 5500])
+    # plt.legend(loc=8)
+    # # ...
+    # ax2 = ax1.twinx()
+    # ax2.set_ylabel(" Force")
+    # ax2.plot(timeline,inputs,label="applied input force",c="c")
+    # #ax2.plot(time,output_pitch_angle,label="output pitchangle",c="b")
+    # #ax2.set_ylim([-90, 90])
+
+    # plt.legend(loc=4)
+    # plt.show()
+    timeline = []
+    applied_inputs = []
+    system_outputs = []
+    soll = []
+    control = sys.getControl()
+    for i in range(0,int(sim_time/timesteps)): 
+        timeline.append(i)
+        
+        out = sys.getSystemresponse(control)
+        control = sys.getControl()
+        sys.updateSystem()
+
+        soll.append(SOLLWERT)
+        applied_input = control
+        system_output = out
+        applied_inputs.append(applied_input)
+        system_outputs.append(system_output)
+        #ctrl.test_g_validity()
+
+    #print(applied_inputs)
+    #print(system_outputs)
+    outputs_x = np.asarray(system_outputs)[:,0]
+    outputs_angle = np.asarray(system_outputs)[:,1]
+    fig, ax1 = plt.subplots()
+    titlesting = "MPC CONTROLLED to " + str(SOLLWERT) + ""
+    plt.title(titlesting)
+    ax1.set_ylabel("Outputs")
+    #ax1.plot(data[:,1],label='Init Data')
+    ax1.plot(timeline,soll,label='SOLLWERT',c="y")
+    ax1.plot(timeline,outputs_x,label='out x',c="r")
+    ax1.plot(timeline,outputs_angle,label='out angle',c="g")
+   
+    plt.legend(loc=8)
+    # ...
+    ax2 = ax1.twinx()
+    ax2.set_ylabel("Inputs")
+    ax2.plot(timeline,applied_inputs,label="applied inputs",c="b")
+    #ax2.plot(data[:,0],label='Init inputs')
+    #ax2.set_ylim([-7, 7])
 
     plt.legend(loc=4)
     plt.show()
@@ -424,14 +668,14 @@ def Chessna_2():
     ### DEEPC PART:
     T_ini = 3
     T_f = 10
-    settings = {"lambda_s":100,
+    settings = {"lambda_s":1,
                 "lambda_g":1,
                 "out_constr_lb":[0],
                 "out_constr_ub":[6000],
                 "in_constr_lb":[-15*sys.factor_deg_to_rad],
                 "in_constr_ub":[15*sys.factor_deg_to_rad]}
 
-    ctrl = C3.Controller(data,T_ini,T_f,1,1,**settings)
+    ctrl = DEEPC.Controller(data,T_ini,T_f,1,1,**settings)
     SOLLWERT = 5020.0
     ctrl.updateReferenceWaypoint([SOLLWERT])
     #ctrl.updateReferenceInput([0.5])
@@ -458,7 +702,7 @@ def Chessna_2():
         #print(u,u_star)
         #control = pid(sys.out_pos[-1])
         soll.append(SOLLWERT)
-        applied_input = Control_input
+        applied_input = -Control_input
         system_output = sys.getSystemresponse([applied_input])
         predictions_y.append(prediction)
         ctrl.updateIn_Out_Measures([applied_input],[system_output[0]])
@@ -500,7 +744,7 @@ def FederMasse():
     input_force = 5.0
     sys = FederMasseSystem(timesteps)
     timeline = [0.0]
-    
+    """
     for i in range(round(sim_time/timesteps)):
         if i == 30:
             input_force = random.random()
@@ -511,10 +755,11 @@ def FederMasse():
     inputs = sys.in_force
     x_out = sys.out_pos
     data = np.hstack([np.reshape(inputs,(len(inputs),1)),np.reshape(x_out,(len(x_out),1))])
-    
+    """
     # SimpleSystems.saveAsCSV("Feder_Masse_"+str(len(data2)), data2)
-    #data = SimpleSystems.readFromCSV("Feder_Masse_101")
-   
+    data = SimpleSystems.readFromCSV("Feder_Masse_101")
+    #data = SimpleSystems.readFromCSV("MOTOR_RAMP_UP")
+    #data = data[100:150]
     ### PLOTTING COLLECTED DATA
     # fig, ax1 = plt.subplots()
     # titlesting = "FederMasse System - Sprung"
@@ -536,20 +781,20 @@ def FederMasse():
 
     #### DEEPC PREDICTION PART
     T_ini = 3
-    T_f = 10
-    settings = {"lambda_s":10,
+    T_f = 20
+    settings = {"lambda_s":10000,
                 "lambda_g":1,
                 "out_constr_lb":[-np.inf],
                 "out_constr_ub":[np.inf],
-                "in_constr_lb":[-20],
-                "in_constr_ub":[20]}
+                "in_constr_lb":[-30],
+                "in_constr_ub":[30]}
 
-    ctrl = C3.Controller(data,T_ini,T_f,1,1,**settings)
+    ctrl = DeePC.Controller(data,T_ini,T_f,1,1,**settings)
     SOLLWERT = 5
     ctrl.updateReferenceWaypoint([SOLLWERT])
     #ctrl.updateReferenceInput([0.5])
     ctrl.updateControlCost_R([[1]])
-    ctrl.updateTrackingCost_Q([[3]])
+    ctrl.updateTrackingCost_Q([[100]])
     #ctrl.updateReferenceInput([0.5])
     sys.resetSystem()
 
@@ -569,7 +814,7 @@ def FederMasse():
             ctrl.updateReferenceWaypoint([SOLLWERT])
         #     #pid.setpoint = SOLLWERT
         timeline.append(i)
-        if i > 20:
+        if i > T_f +3:
             u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
             Control_input = u[0][0]
             prediction = y_star[0][0]
@@ -612,6 +857,105 @@ def FederMasse():
     plt.legend(loc=4)
     plt.show()
 
+def FederMasse_MPC():
+
+    timestep = 0.1
+    simtime = 15
+    TIME_HORIZON = int(4/timestep) #seconds
+    SOLLWERT = 5
+    sys = SimpleSystems.FederMasseSystem_MPC(timestep,TIME_HORIZON,SOLLWERT)
+    control = [0.0]
+    time = [0]
+    soll = [SOLLWERT]
+    sys.getSystemresponse(control)
+    sys.updateSystem()
+    for i in range(int(simtime/timestep)):
+        soll.append(SOLLWERT)
+        control = sys.getControl()
+        sys.getSystemresponse(control)
+        sys.updateSystem()
+        time.append(i*timestep)
+
+
+    out_x = sys.out_x
+    ins = sys.inputs
+    predicitons = np.asarray(sys.prediction)
+    
+    f_predicitons = np.asarray(sys.first_prediction)
+    #predicitons = np.insert(predicitons,0,[None for i in range(TIME_HORIZON+1)])
+    #predicitons = predicitons[:len(predicitons)-TIME_HORIZON]
+
+
+    fig, ax1 = plt.subplots()
+    titlesting = "MPC Controlled Spring-Mass-Damper System"
+    plt.title(titlesting)
+    ax1.set_xlabel("Time [s]")
+    ax1.set_ylabel("Position x [m]")
+    ax1.plot(time,out_x,label="System position",c="g")
+    #ax1.plot(time,predicitons,label="Model prediction",c="r")
+    ax1.plot(time,soll,label="Reference [m]",c="tab:orange")
+    plt.legend(loc=8)
+    # ...
+    ax2 = ax1.twinx()
+    ax2.set_ylabel("Force F[N]")
+    ax2.plot(time,ins,label="Input Force",c="b")
+    #ax2.plot(out_angle,label="system out_angle",c="r")
+    #ax2.set_ylim([-2, 2])
+
+    plt.legend(loc=4)
+    plt.show()
+
+def FederMasse_PID():
+
+    timestep = 0.01
+    simtime = 15
+    TIME_HORIZON = int(4/timestep) #seconds
+    SOLLWERT = 5.0
+    sys = SimpleSystems.FederMasseSystem(timestep)
+    control = [0.0]
+    time = []
+    time.append(0)
+    soll = [SOLLWERT]
+    pid = PID(1, 0.6, 0.05, setpoint=SOLLWERT)
+    pid.output_limits = (-20, 20)
+    #pid.sample_time = timestep
+
+    sys_out = sys.OneTick(0)
+
+    for i in range(int(simtime/timestep)):
+        soll.append(SOLLWERT)
+        
+        control = pid(sys_out)
+        #print("control",control,control[0])
+        sys_out = sys.OneTick(control[0])
+        time.append(i*timestep)
+
+
+    out_x = sys.out_pos
+    ins = sys.in_force
+    
+    #predicitons = np.insert(predicitons,0,[None for i in range(TIME_HORIZON+1)])
+    #predicitons = predicitons[:len(predicitons)-TIME_HORIZON]
+
+
+    fig, ax1 = plt.subplots()
+    titlesting = "MPC Controlled Spring-Mass-Damper System"
+    plt.title(titlesting)
+    ax1.set_xlabel("Time [s]")
+    ax1.set_ylabel("Position x [m]")
+    ax1.plot(time,out_x,label="System position",c="g")
+    ax1.plot(time,soll,label="Reference [m]",c="tab:orange")
+    plt.legend(loc=8)
+    # ...
+    ax2 = ax1.twinx()
+    ax2.set_ylabel("Force F[N]")
+    ax2.plot(time,ins,label="Input Force",c="b")
+    #ax2.plot(out_angle,label="system out_angle",c="r")
+    #ax2.set_ylim([-2, 2])
+
+    plt.legend(loc=4)
+    plt.show()
+
 def ControlWithPID():
     pid = PID(0.3, 0.1, 0.00, setpoint=SOLLWERT)
     pid.output_limits = (-1.0, 1.0)
@@ -626,17 +970,138 @@ def PendulumWithCart_Animated():
         cart_animation.updateAnimation(x,1)
         x += 1
 
+def BLDC_MOTOR_CONTROL():
+    M = BLDC_MOTOR.PC_INTERFACE()
+    M.verbose = True
+    M.SetMotorStill()
+    time.sleep(1)
+    M.SetMotorInitRotation()
+    time.sleep(1)
+ 
+    other_range = [i for i in range(1310,1600,1)]
+    data = []
+    for i in range(1000):
+        if i%250 == 0:
+            set_val = random.randint(other_range[0], other_range[-1])
+            M.setRPM(set_val)
+        value = M.ESC_RW()
+        data.append([set_val,value])
+
+    data = np.asarray(data)
+   
+    filename = "MOTOR_RAMP_UP"
+    saveAsCSV(filename,data)
+    data_2 = readFromCSV(filename)
+    data_2 = data_2[:100]
+    print("DATA LENGTH:",len(data_2))
+    M.SetMotorStill()
+    time.sleep(1)
+    M.SetMotorInitRotation()
+    time.sleep(8)
+
+    T_ini = 2
+    T_f = 5
+    settings = {"lambda_s":1,
+                "lambda_g":1,
+                "out_constr_lb":[0],
+                "out_constr_ub":[400],
+                "in_constr_lb":[1250*2],
+                "in_constr_ub":[1600*2],
+                "verbose":False}
+
+    ctrl = DeePC.Controller(data,T_ini,T_f,1,1,**settings)
+
+    SOLLWERT = 70
+    ctrl.updateReferenceWaypoint([SOLLWERT])
+    #ctrl.updateReferenceInput([0.5])
+    ctrl.updateControlCost_R([[1]])
+    ctrl.updateTrackingCost_Q([[1]])
+    #ctrl.updateReferenceInput([0.5])
+    
+    predictions_y = [0]
+    applied_inputs = [0]
+    system_outputs = [0]
+    soll = [SOLLWERT]
+    timeline = [0]
+    #pid = PID(0.9, 10, 0.1, setpoint=SOLLWERT)
+    #pid.output_limits = (-5.0, 5.0)
+    #pid.sample_time = 0.005
+    Control_input = M.cc_range[10]
+    prediction = 0
+    #u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
+    for i in range(0,12): 
+        timeline.append(i)
+        if i > T_f :
+            u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
+            Control_input = u[0][0]
+            prediction = y_star[0][0]
+        else:
+            Control_input += 1
+        #print(u,u_star)
+        soll.append(SOLLWERT)
+        applied_input = Control_input
+        M.setRPM(applied_input)
+        system_out = M.ESC_RW()
+        print(i," OUT: ",system_out," IN: ",applied_input)
+        system_outputs.append(system_out)
+
+        predictions_y.append(prediction)
+        applied_inputs.append(applied_input)
+        ctrl.updateIn_Out_Measures([applied_input],[system_out])
+        ctrl.updateReferenceInput([applied_input])
+        #ctrl.test_g_validity()
+    
+
+    #print("u and y: ", [applied_inputs[i] for i in range(10)],
+    #                    [outputs2[i] for i in range(10)])
+    #track_mean,track_std = SimpleSystems.Evaluate_Tracking_Accuarcy(x_out,predictions_y)
+    #control_mean,control_std = SimpleSystems.Evaluate_Control_Accuarcy(soll,x_out)
+
+
+    fig, ax1 = plt.subplots()
+    titlesting = "DEEPC CONTROLLED to " + str(SOLLWERT) + ""
+    plt.title(titlesting)
+    ax1.set_ylabel("Outputs")
+    #ax1.plot(data[:,1],label='Init Data')
+    ax1.plot(timeline,soll,label='SOLLWERT',c="y")
+    ax1.plot(timeline,predictions_y,label='predictions',c="r")
+    ax1.plot(timeline,system_outputs,label="system behaviour",c="g")
+    
+    plt.legend(loc=8)
+    # ...
+    ax2 = ax1.twinx()
+    ax2.set_ylabel("Inputs")
+    ax2.plot(timeline,applied_inputs,label="applied inputs",c="b")
+    #ax2.plot(data[:,0],label='Init inputs')
+    #ax2.set_ylim([-7, 7])
+
+    plt.legend(loc=4)
+    plt.show()
+
+
+def scientific(x, pos):
+    # x:  tick value - ie. what you currently see in yticks
+    # pos: a position - ie. the index of the tick (from 0 to 9 in this example)
+    return '%.1E' % x
+
 #main5()
 #main3()
 #main4()
-#main()
+ISystem_1(1,1,1,1)
+#ISystem_scout_lg_ls()
+#ISystem_scout_Q_R()
+
 #main2()
 #Chessna()
 #Chessna_2()
 #FederMasse()
+#FederMasse_MPC()
+#FederMasse_PID()
 #QuadCopter_system()
 #InvertedPendulum_OnCart()
-PendulumWithCart_Animated()
+#PendulumWithCart_Animated()
+#InvertedPendulum_MPC_WITHOUT_CART()
+#BLDC_MOTOR_CONTROL()
 
 
 

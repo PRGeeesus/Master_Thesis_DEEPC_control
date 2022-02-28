@@ -97,18 +97,19 @@ def main():
         world.apply_settings(settings)
         starttick = world.tick()
 
-        starting_x = 5
-        starting_y = 30
-        temp,starting_transform = cHelper.spawn_car(actor_list,world,starting_x,starting_y)
+        starting_x = 7
+        starting_y = -80
+        temp,starting_transform = cHelper.spawn_car(world,starting_x,starting_y)
         tm.ignore_lights_percentage(temp,100) # use this only when record data. It makes the car ignore all red lights
         for v in actor_list:
             v.set_autopilot(True,tm_port)
+        temp.set_autopilot(True,tm_port)
         
          #tm.ignore_lights_percentage(temp,100) # use this only when record data. It makes the car ignore all red lights
         sample_waypoints = []
 
         #cHelper.drawWaypoints(data,world,[10,0,255],0.0)
-        time.sleep(3)     
+        time.sleep(2)     
         cHelper.recordData(client,world,temp,"sample_waypoints_3",40,400)
 
     except KeyboardInterrupt:

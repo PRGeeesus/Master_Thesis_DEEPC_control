@@ -57,29 +57,34 @@ print(u[0],y[0],u_star[0],y_star[0])
 
 exit()
 """
-Sim = Simulator([0,0])
+Sim = Simulator([0,0],1,1)
 
 def main():
     # load the pre-recorded data
     #data2 = cHelper.readFromCSV("sample_waypoints")
-    data2 = cHelper.readFromCSV("sample_waypoints_2")
-    data2 = cHelper.readFromCSV("sample_waypoints_3")
+    #data2 = cHelper.readFromCSV("sample_waypoints_2")
+    data2 = cHelper.readFromCSV("sample_waypoints_straight_2D")
+    #data2 = cHelper.readFromCSV("sample_waypoints_3")
     #data2 = cHelper.readFromCSV("manual_recording")
     #data2 = data2[:350]
+    T_ini = 2
+    T_f = 20
+    settings = {"lambda_s":100,
+                "lambda_g":1,
+                "out_constr_lb":[-10,],
+                "out_constr_ub":[100000],
+                "in_constr_lb":[0],
+                "in_constr_ub":[1]}
 
-    C3 = DeePC_OSQP.Controller(data2,2,10,3,3)
-    # data, T_ini, T_f , nr inputs, nr outputs
-    C3.updateIOConstrains([0,-1,0],[1,1,1],[-10000,-10000,-180],[10000,10000,180])
-    C3.updateControlCost_R([[3,0,0],[0,3,0],[0,0,1]]) # quadratic control effort cost matrix,
-    C3.updateTrackingCost_Q([[1,0,0],[0,1,0],[0,0,1]]) # quadratic tracking error cost matrix
-    C3.update_lambda_g(500) #the weight on the regularization of 푔
-    C3.update_lambda_s(0.000000001) #weight on the softened initial condition constraint
+    C3 = DeePC_OSQP.Controller(data2,T_ini,T_f,1,1,**settings)
 
-    reference = [-10.0 ,20.0, 80.0]
+
+    reference = [40]
     print("Reference Point is:",reference)
     C3.updateReferenceWaypoint(reference)
-    C3.updateReferenceInput([0.2 ,0.0, 0.0])
+    #C3.updateReferenceInput([0.2 ,0.0, 0.0])
     
+    print("Initalize World:")
     Sim.InitWorld()
     while(Sim.Initalized != True):
         if Sim.Initalized == False:
@@ -89,28 +94,34 @@ def main():
 
     #Sim.resetVehicle()
     tick = 0
-    while(tick < 200):
+    brake_in = 0
+    while(tick < 400):
         tick = tick + 1
         #start filling y_ini and u_ini
-        if tick == 100:
-            reference = [-10.0 ,30.0, 120.0]
-            C3.updateReferenceInput([0.0 ,0.0, 1.0])    
-
-        Sim.DrawReferencePoint(reference)
+        Sim.DrawReferencePoint([reference[0],0])
         #optim_control,prediction = controller.getOptimalControlSequence() # workd exepet for the equality constrain
         u,y,u_star,y_star,g = C3.getInputOutputPrediction()
             
         throttle_in = u_star[0][0]
-        steer_in = u_star[0][1]
-        brake_in = u_star[0][2]
-        Sim.ControlVehicle(throttle_in,steer_in,brake_in,True)
+        #steer_in = u_star[0][1]
+        #brake_in = u_star[0][2]
+        #brake_in = 0
+        Sim.ControlVehicle(throttle_in,0,brake_in,True)
         
 
         outputs = Sim.GetVehicleInfo()
-        inputs = [throttle_in, steer_in,brake_in]
+        outputs_full = outputs
+        outputs = [outputs[1]+140.0]
+        #inputs = [throttle_in, steer_in,brake_in]
+        inputs = [throttle_in]
         C3.updateIn_Out_Measures(inputs,outputs,True)
-        Sim.UpdateRecordingData(reference,inputs,outputs,y_star[0])
-        Sim.DrawPredictionPoint(y_star[0])
+        Sim.UpdateRecordingData(reference,inputs,outputs,y_star[0][0])
+        #print("check: ",inputs,outputs,y_star[0])
+        Sim.DrawPredictionPoint([0,y_star[0][0]])
+        if outputs[0] < 52 and outputs[0] > 49:
+            brake_in = 1
+            break
+
 
     Sim.plot_results()
     Sim.CleanUpAllActors()
@@ -124,5 +135,6 @@ if __name__ == '__main__':
     except Exception as e:
         print("Failed:",e)
         Sim.CleanUpAllActors()
+    
 
 

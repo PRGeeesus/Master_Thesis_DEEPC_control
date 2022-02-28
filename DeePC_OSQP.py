@@ -1,3 +1,19 @@
+"""
+###########################################################################
+Author: Martin Buchschuster
+In the scope of a Master Thesis for the Course: Robotics and Autonomous Systems
+#
+# Start Date: 1.10.2021
+# Run with Python version 3.7.3 
+#  
+#
+# contact: martin@buchschuster.de
+############################################################################
+
+"""
+#for documentation styling https://docutils.sourceforge.io/docs/ref/rst/directives.html#math
+# https://pdoc3.github.io/pdoc/doc/pdoc/#gsc.tab=0
+
 from numpy.core.defchararray import _use_unicode
 import osqp
 import sys
@@ -8,10 +24,22 @@ from scipy import sparse
 import warnings
 import csv
 
-         
-
 class Controller:
-    # controller has to be initalized with data:
+    """
+    .. important::
+        This class handels Everything
+    Args:
+        @data:[[in_1, in_2, ..., in_n,out_1,out_2,...,out_m],
+        t+1 ->[in_1, in_2, ..., ...]
+        t+2 ->[in_1, in_2, ..., ]]\n
+        @T_ini: size of the past time frame\n
+        @T_f  : size of future Time frame\n
+        @input_size: # inputs per timestep. (also n)\n
+        @output_size: # outputs per timestep. (also m)\n
+        @**kwargs   : settings -> see doc for information\n
+    Returns:
+        An Object of type <Controller>
+    """
     def __init__(self,data,T_ini,T_f,input_size,output_size,**kwargs):
         self.input_size = input_size
         self.output_size = output_size
@@ -24,6 +52,7 @@ class Controller:
         self.in_constr_lb  = np.array([-np.inf for i in range(self.input_size)])
         self.in_constr_ub = np.array([np.inf for i in range(self.input_size)])
         self.regularize = True
+        self.verbose = False
 
         self.settable_parameters = {"lambda_s":"weight of softned inital constraint",
                                     "lambda_g":"weight on regularization of",
@@ -31,9 +60,9 @@ class Controller:
                                     "out_constr_ub":"Upper Constraints bounds for Output",
                                     "in_constr_lb":"Lower Constraints bounds for Input",
                                     "in_constr_ub":"Upper Constraints bounds for Input",
-                                    "regularize":"If Regularization should be allpied"}
+                                    "regularize":"If Regularization should be allpied",
+                                    "verbose":"If verbose should be allpied"}
         self.UnpackKWARGS(kwargs)
-        
         self.data_length = len(data)
         self.data = np.asarray(data)
 
@@ -66,8 +95,8 @@ class Controller:
 
         #to be updated as the controller runs:
         self.y_ini = np.zeros((self.output_size)) # T_ini most recent input/output measures
-        self.u_ini = np.empty((self.input_size))
-        self.Init_u_y_ini() # sets the last few datapoints from output_sequence and input_sequence
+        self.u_ini = np.zeros((self.input_size))
+        self._Init_u_y_ini() # sets the last few datapoints from output_sequence and input_sequence
 
  
         self.U_p_f = self.generateHankel_Collums(self.L,self.input_sequence)
@@ -84,7 +113,7 @@ class Controller:
 
 
         # all the initalization for the SOlver:
-        init_value = 0.0   
+        init_value = 0.0
         self.u_len = self.T_f*self.input_size
         self.y_len =  self.T_f*self.output_size
         self.g_len = len(self.input_sequence) - self.L
@@ -105,20 +134,23 @@ class Controller:
         self.A = self.calculate_A()
         
         self.calculate_bounds_u_l()
-        self.SolverSettings = {"warm_start" : False,
-                                "adaptive_rho" : False,
+        self.SolverSettings = {"warm_start" : True,
+                                "adaptive_rho" : True,
                                 "eps_rel": 0.00001,
                                 "eps_abs": 0.00001,
                                 "max_iter": 10000,
-                                "verbose" :False}
+                                "verbose" :self.verbose}
+                                
         self.prob = osqp.OSQP() #sometimes there is ValueError: Workspace allocation error!
-
-        self.prob = osqp.OSQP()
         self.prob.setup(self.P, self.q, self.A, l = self.lb, u = self.ub,**self.SolverSettings) 
 
 
     # TODO: this is not nice, check if variables are same type and same LENGTH!
     def UnpackKWARGS(self,keyword_arguments_list):
+        """
+        This function unpack the **kwargs that are passed upon initialization and sets them
+        if they are not already attributes.
+        """
 
         for key in keyword_arguments_list:
             temp = getattr(self,key,None)
@@ -130,17 +162,25 @@ class Controller:
                     print(key,": ",self.settable_parameters[key])
                 print("\n")
 
+    
     def ProblemSetup(self):
+        """
+        Not needed anymore. Sets up the problem
+        """
         self.prob = osqp.OSQP()
         self.prob.setup(self.P, self.q, self.A, l = self.lb, u = self.ub,**self.SolverSettings) 
 
     def update_P(self):
+        """
+        Call when you need to update the P matrix because you updated the data
+        """
         self.P = self.calculate_P()
-        self.ProblemSetup()
+        self.prob.update(Px=self.P.data)
 
     def update_q(self):
         self.q = self.calculate_q()
-        self.ProblemSetup()
+        self.prob.update(q=self.q)
+        
 
     def updateIOConstrains(self,input_lb,input_ub,output_lb,output_ub):
         def warning_mesg(in_out,lower_upper):
@@ -200,7 +240,7 @@ class Controller:
         P = np.block([[P_u,zeros_1_2,zeros_1_3],
                      [zeros_2_1,P_y,zeros_2_3],
                      [zeros_3_1,zeros_3_2,P_g]])
-        P = sparse.csc_matrix(2*P)
+        P = sparse.csc_matrix(P)
         return P
 
     def calculate_q(self):
@@ -215,7 +255,7 @@ class Controller:
             ->in update_y_r
             ->in update_in_out_measures
 
-        q = [-2u_r*R ... -2y_r*Q...(-2*l_d*y_ini*Y_p + -2*l_g*gr^T)....] u      =  u_r*R*u  +  y_r*Q*y  +  y_ini*Y_p*g - gr*g
+        q = [-2u_r*R ... -2y_r*Q...(-2*l_s*y_ini*Y_p + -2*l_g*gr^T)....]       =  u_r*R*u  +  y_r*Q*y  +  y_ini*Y_p*g - gr*g
                                                         y
                                                         g
         FOR UREGULARIZED
@@ -252,21 +292,22 @@ class Controller:
 
     def calculate_A(self):
         """
-        0   0  Up               Up*g     = u_ini
-       -1   0  Uf   u      -u + Uf*g     = 0
-        0  -1  Yf   y   =  -y + Yf*g     = 0
-        1   0  0    g       u             < u_upper   > u_lower
-        0   1  0            y             < y_upper   > y_lower
-        
-            A       x        l/u
+        0 0 U_p             Up*g        = [u_ini]                 \n
+        -1 0 U_f   u      -u + Uf*g     = [0]                     \n
+        0 -1 Y_f   y   =  -y + Yf*g     = [0]                     \n
+        1 0 0      g      u             < [u_upper]   > [u_lower] \n
+        0 1 0               y           < [y_upper]   > [y_lower] \n
+        ----- ----- ----- ----- ----- ----- ----- -----
+        \n
+            A       x        l/u                                \n
 
-        FOR UNREGULARIZED:
-        0   0  Up               Up*g     = u_ini
------>  0   0  Yp               Yp*g     = y_ini 
-       -1   0  Uf   u      -u + Uf*g     = 0
-        0  -1  Yf   y   =  -y + Yf*g     = 0
-        1   0  0    g       u             < u_upper   > u_lower
-        0   1  0            y             < y_upper   > y_lower
+        FOR UNREGULARIZED:\n
+        0   0  Up               Up*g     = u_ini                \n
+        0   0  Yp               Yp*g     = y_ini                \n
+       -1   0  Uf   u      -u + Uf*g     = 0                    \n
+        0  -1  Yf   y   =  -y + Yf*g     = 0                    \n
+        1   0  0    g       u             < u_upper   > u_lower \n
+        0   1  0            y             < y_upper   > y_lower \n
         
             A       x        l/u
 
@@ -307,30 +348,13 @@ class Controller:
                           [u_boundaries_4_1,u_bouds_zeros_4_2,ZEROS_4_3],
                           [y_bouds_zeros_5_1,y_boundaries_5_2,ZEROS_5_3]])
 
-        A = sparse.csc_matrix(2*A)
+        A = sparse.csc_matrix(A)
         return A
 
     def calculate_bounds_u_l(self):
         """
-        upper and lower bound
-        -------------------------
-        0   0  Up           Up*g          = u_ini
-        -1  0  Uf   u       -u + Uf*g     = 0
-        0  -1  Yf   y   =   -y + Yf*g     = 0
-        1   0  0    g       u             < u_upper   > u_lower
-        0   1  0            y             < y_upper   > y_lower
+        upper and lower bounds. Update when constrinats are changed
         
-            A       x        l/u
-        FOR UNREGULARIZED:
-        0   0  Up               Up*g     = u_ini
-        0   0  Yp               Yp*g     = y_ini
-       -1   0  Uf   u      -u + Uf*g     = 0
-        0  -1  Yf   y   =  -y + Yf*g     = 0
-        1   0  0    g       u             < u_upper   > u_lower
-        0   1  0            y             < y_upper   > y_lower
-        
-            A       x        l/u
-
         """
 
         y_zeros = [[0] for i in range(self.T_f*self.output_size)]
@@ -376,6 +400,20 @@ class Controller:
         self.lb = lb
         
     def getInputOutputPrediction(self):
+        """
+        Inputs:
+        -------
+        None\n
+        Returns:
+        -------
+        This returns the predictions after setting the controller up correctly.
+        u,y,u_star,y_star,g \n
+        u = Suggested inputs. Array of size T_f x m   \n
+        y = Output predictions. Array of size T_f x p \n
+        u_star = same as u but calculated by U_f x g  \n
+        y_star = same as y but calculated by Y_f x g  \n
+        g = the 'learned' state weights               \n
+        """
         x0_result = self.solve_for_x_regularized()
         #x0_result = self.opt_solve_for_x()
         g = x0_result[self.T_f*self.input_size + self.T_f*self.output_size : ]
@@ -394,32 +432,21 @@ class Controller:
 
         return u,y,u_star,y_star,g
 
-    def opt_minFunction(self,x):
-        x_ = np.asarray(x)
-        temp = np.matmul(self.P.toarray(),x_)
-        first_term = np.matmul(x_.T,temp)
-        second_term = np.matmul(self.q,x_)
-
-        return first_term + second_term
 
     def solve_for_x_regularized(self):
         res = self.prob.solve()
         return res.x
-    
-    def opt_solve_for_x(self):
-        #constr = opt.LinearConstraint(self.A.toarray(), self.lb, self.ub, keep_feasible=False)
-        # cons = ({'type': 'eq', 'fun': lambda x:  np.matmul(self.U_p,x[self.T_f*self.input_size + self.T_f*self.output_size :]) - self.u_ini},
-        #         {'type': 'eq', 'fun': lambda x:  np.matmul(self.U_f,x[self.T_f*self.input_size + self.T_f*self.output_size :]) - x[:self.T_f*self.input_size]},
-        #         {'type': 'eq', 'fun': lambda x: np.matmul(self.Y_f,x[self.T_f*self.input_size + self.T_f*self.output_size :]) - x[self.T_f*self.input_size : self.T_f*self.input_size + self.T_f*self.output_size]})
-        cons = ({'type': 'ineq', 'fun': lambda x:  np.matmul(self.A.toarray(),x).flatten()-self.lb.flatten()},
-                {'type': 'ineq', 'fun': lambda x:  self.ub.flatten() - np.matmul(self.A.toarray(),x).flatten()})
-        sol = opt.minimize(self.opt_minimizationFunction,self.x0,method="SLSQP",constraints=cons)
-        return sol.x
-    
-    def opt_minimizationFunction(self,x):
-        return  np.matmul(x,np.matmul(self.P.toarray(),np.transpose(x))) + np.matmul(self.q,x)
 
     def updateReferenceWaypoint(self,new_y_r):
+        """
+        The reference output y_r can be updated. Will notify if wrong Size\n
+        Inputs:
+        -------
+        new_y_r = array of new reference output \n
+        Returns:
+        -------
+        None
+        """
         if len(new_y_r) != self.output_size:
             print("Wrong size for reference point. Must be: ",self.output_size,"\n")
         self.y_r = new_y_r
@@ -427,13 +454,32 @@ class Controller:
         self.update_q()
     
     def updateReferenceInput(self,new_u_r):
+        """
+        The reference input u_r can be updated. Will notify if wrong Size\n
+        Inputs:
+        -------
+        new_u_r = array of new reference inout \n
+        Returns:
+        -------
+        None
+        """
         if len(new_u_r) != self.input_size:
             print("Wrong size for reference point. Must be: ",self.output_size,"\n")
         self.u_r = new_u_r
-        self.recalculate_g_r
+        self.recalculate_g_r #because it uses u_r
         self.update_q()
     
     def updateControlCost_R(self,new_R):
+        """
+        The Control Cost matrix R can be updated. Will notify if wrong Size\n
+        It will update P and q aswell
+        Inputs:
+        -------
+        new_R = array of new Control Cost matrix \n
+        Returns:
+        -------
+        None
+        """
         if np.shape(new_R) != np.shape(self.R):
             print("Wrong dimension for updatad Control Cost")
         else:
@@ -442,6 +488,16 @@ class Controller:
             self.update_q()
 
     def updateTrackingCost_Q(self,new_Q):
+        """
+        The Tracking Cost matrix Q can be updated. Will notify if wrong Size\n
+        It will update P and q aswell
+        Inputs:
+        -------
+        new_Q = array of new  Tracking Cost matrix \n
+        Returns:
+        -------
+        None
+        """
         if np.shape(new_Q) != np.shape(new_Q):
             print("Wrong dimension for updatad Control Cost")
         else:
@@ -449,27 +505,46 @@ class Controller:
             self.update_P()
             self.update_q()
     
-    # call when changing y_r, u_r
+   
     def recalculate_g_r(self):
+        """
+        Will recalculate the regularization parameters g_r().
+        called when updated y_r, u_r
+        Inputs:
+        -------
+        None \n
+        Returns:
+        -------
+        None
+        """
         self.g_r = []
         self.data_inversed_regularized = np.vstack((self.U_p,self.Y_p,self.U_f,self.Y_f))    
         #self.data_inversed_regularized = np.vstack((self.Y_p,self.data_inversed_regularized))
         #self.data_inversed_regularized = np.vstack((self.U_p,self.data_inversed_regularized))
         self.g_r = np.linalg.pinv(self.data_inversed_regularized)
         
-        temp = []
-        ur_tmep = np.array(self.u_r).T
-        T_ini_ur = np.kron(np.ones((self.T_ini,1)), ur_tmep)
+        #temp = []
+        #ur_tmep = np.array(self.u_r).T
+        T_ini_ur = np.kron(np.ones((self.T_ini,1)),np.reshape(self.u_r,(self.input_size,1)))
         T_ini_yr = np.kron(np.ones((self.T_ini,1)), np.reshape(self.y_r,(self.output_size,1)))
         T_f_ur = np.kron(np.ones((self.T_f,1)), np.reshape(self.u_r,(self.input_size,1)))
         T_f_yr = np.kron(np.ones((self.T_f,1)), np.reshape(self.y_r,(self.output_size,1)))
-        temp = np.vstack((T_f_ur,T_f_yr))
-        temp = np.vstack((T_ini_yr,temp))
-        temp = np.vstack((T_ini_ur,temp))
-        #print("ur yr stacked:",np.shape(temp.flatten()),temp.flatten())
+        temp = np.vstack([T_ini_ur,T_ini_yr,T_f_ur,T_f_yr])
+        
         self.g_r = np.matmul(self.g_r,temp.flatten())
         
     def updateIn_Out_Measures(self,new_input_measure,new_output_measures,verbose = False):
+        """
+        Will Update Inout and output measses. that is u_ini and y_ini.
+        Inputs:
+        -------
+        new_input_measure = new array of size 1 x m \n
+        new_output_measures = new array of size 1 x p\n
+        verbose = if action should be printed\n
+        Returns:
+        -------
+        None
+        """
         if(len(new_input_measure) != self.input_size or len(new_output_measures) != self.output_size):
             print("Trying to update with wrong array sizes")
         
@@ -485,16 +560,22 @@ class Controller:
         self.u_ini = np.vstack((self.u_ini,new_input_measure))
         self.y_ini = np.vstack((self.y_ini,new_output_measures))
 
-        while(len(self.y_ini) > self.T_ini):
-            self.u_ini = np.delete(self.u_ini,0,0)
-            self.y_ini = np.delete(self.y_ini,0,0)
 
+        while(len(self.y_ini) > self.T_ini):
+            #self.u_ini = np.delete(self.u_ini,0,0)
+            #self.y_ini = np.delete(self.y_ini,0,0)
+            self.u_ini = self.u_ini[len(self.y_ini)-self.T_ini:]
+            self.y_ini =self.y_ini[len(self.y_ini)-self.T_ini:] 
         # if y_ini is filled, only then update q, as it requires y_ini to be T_ini long
         # if this is not checked then you can not initalize y_ini with this function in the beginning
         if len(self.y_ini) == self.T_ini:
             self.update_q()
+            if verbose == True: print("Updating q")
 
     def generateHankel_Collums(self,L,data_sequence):
+        """
+        Sub-routine for generating the hakel matrix
+        """
         # this generates a hankel amtrix with the size : L x (data_length-L) as seen my each input sequence
         # viewed with each data point it is:      L * input_size  X  (data_length-L)*input_size
         # start with i:L+i -> flatten -> stick to right of H
@@ -516,13 +597,16 @@ class Controller:
     
     def check_data_sufficiency(self):
         L = self.T_ini + self.T_f
-        if self.data_length <= ((self.input_size + 1)*L+1 ):
-            warnings.warn(str("\nData Lenglth not Sufficient. N_data("+str(self.data_length)+") !> (input_size("+str(self.input_size)+") + 1)*L("+str(L)+")+1"))
+        if self.data_length < ((self.input_size + 1)*L+1 ):
+            warnings.warn("Data Lenglth not Sufficient. N_data("+str(self.data_length)+") !> (input_size("+str(self.input_size)+") + 1)*L("+str(L)+")+1")
 
-    def Init_u_y_ini(self):
+    def _Init_u_y_ini(self):
         """
         Use only in __init__()
+        It is called in __init__() and does not have to called manually
         sets u_ini and y_ini the last elements of input_sequence and output_sequence
+        This has to be done when the controller is initalized, but no recent system data is available.
+
         """
         for i in range(self.T_ini-1):
             self.u_ini = np.vstack((self.u_ini,self.input_sequence[self.data_length-self.T_ini+i]))

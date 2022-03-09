@@ -1294,18 +1294,22 @@ def AirFlow():
     time.sleep(0.5)
     value = box.SetVoltage(0)
     time.sleep(2)
-    """
+    
     timesteps = 1
-    sim_time = 200
+    sim_time = 300
     input_Voltage = 5.0
 
     recording_timeline = []
     recording_inputs = []
     recording_outputs = []
-    
+    """
     for i in range(int(round(sim_time/timesteps))):
-        if i%30 == 0:
-            input_Voltage = int(random.random()*1023)
+        
+        if i > 200:
+            if i%30 == 0:
+                input_Voltage = random.random()*1023
+        if i <= 200:
+            input_Voltage = i
 
         recording_inputs.append(input_Voltage)
         recording_timeline.append(i*timesteps)
@@ -1315,7 +1319,7 @@ def AirFlow():
 
     data = np.hstack([np.reshape(recording_inputs,(len(recording_inputs),1)),
                       np.reshape(recording_outputs,(len(recording_outputs),1))])
-    """    
+    """
     data_name = "Voltage_to_pressure_200"
     #SimpleSystems.saveAsCSV(data_name, data)
     data = SimpleSystems.readFromCSV(data_name)
@@ -1339,17 +1343,19 @@ def AirFlow():
 
     plt.legend(loc='upper right')
     plt.show()
-
     """
+    
     
     #### DEEPC PREDICTION PART
     #print("len data:", len(data)," data: ",data,"shape: ",np.shape(data))
-    T_ini = 3
-    T_f = 10
-    settings = {"lambda_s":100000000,
-                "lambda_g":10000000,
-                "out_constr_lb":[-np.inf],
-                "out_constr_ub":[np.inf],
+    # lambda_s":100000,
+    # lambda_g":1000000
+    T_ini = 5
+    T_f = 15
+    settings = {"lambda_s":100000,
+                "lambda_g":2000000,
+                "out_constr_lb":[0],
+                "out_constr_ub":[1000],
                 "in_constr_lb":[1],
                 "in_constr_ub":[1023],
                 "regularize":True,
@@ -1357,9 +1363,9 @@ def AirFlow():
 
     # Set up the Controller
     ctrl = DeePC.Controller(data,T_ini,T_f,1,1,**settings)
-    SOLLWERT = 500
+    SOLLWERT = 400
     ctrl.updateReferenceWaypoint([SOLLWERT])
-    ctrl.updateTrackingCost_Q([[1]])
+    ctrl.updateTrackingCost_Q([[100]])
     ctrl.updateControlCost_R([[1]])
 
     predictions_y = [0]
@@ -1373,11 +1379,7 @@ def AirFlow():
     Control_input = 0
     prediction = 0
     u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
-    for i in range(0,200): 
-        if i == 100:
-            SOLLWERT = 100
-            ctrl.updateReferenceWaypoint([SOLLWERT])
-        #     #pid.setpoint = SOLLWERT
+    for i in range(0,200):
         timeline.append(i)
         if i > T_f +3:
             u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
@@ -1397,8 +1399,8 @@ def AirFlow():
         ctrl.updateIn_Out_Measures([applied_input],[system_output])
 
         # user output:
-        print("input: ",applied_input, " output: ", system_output, " prediction: ",prediction)
-        time.sleep(0.1)
+        print(i,": in: ",applied_input, " out: ", system_output, " prediction: ",prediction)
+        time.sleep(0.01)
     
 
     #track_mean,track_std = SimpleSystems.Evaluate_Tracking_Accuarcy(system_outputs,predictions_y)
@@ -1408,7 +1410,7 @@ def AirFlow():
     fig, ax1 = plt.subplots()
     titlesting = "DeePC control"
     plt.title(titlesting,fontsize = 16)
-    ax1.set_ylabel("Outputs",fontsize = 16)
+    ax1.set_ylabel("Outputs[V]",fontsize = 16)
     ax1.set_xlabel("Time",fontsize = 16)
     #ax1.plot(data[:,1],label='Init Data')
     ax1.plot(timeline,soll,label='set point',c="y")
@@ -1418,7 +1420,7 @@ def AirFlow():
 
     # PLOT ON RIGHT AXIS
     ax2 = ax1.twinx()
-    ax2.set_ylabel("Inputs",fontsize = 16)
+    ax2.set_ylabel("Inputs[V]",fontsize = 16)
     ax2.plot(timeline,applied_inputs,label="applied inputs",c="b")
     #ax2.plot(data[:,0],label='Init inputs')
     #ax2.set_ylim([-7, 7])

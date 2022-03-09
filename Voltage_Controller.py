@@ -47,19 +47,18 @@ class PC_INTERFACE():
         
     
     def SetVoltage(self,voltage):
-        fou_digit_v = '{0:04d}'.format(voltage)
+        fou_digit_v = '{0:04d}'.format(int(voltage))
         num = "3"+str(fou_digit_v)+"\r"
-        print("SENDING:",num)
-        #box.arduino.write(bytes(str(num),'ascii'))
+        #self.arduino.write(bytes(str(num),'ascii'))
         for i in num:
-            box.arduino.write(bytes('{}'.format(i),'ascii'))
+            self.arduino.write(bytes('{}'.format(i),'ascii'))
         #data = box.arduino.read()
-        data = box.arduino.readline()
-        #box.arduino.reset_input_buffer()
+        data = self.arduino.readline()
+        #self.arduino.reset_input_buffer()
         #
         if data != b'':
             str_ret = bytes.decode(data)
-            print("Recieved:",data," ",len(str_ret)," ",len(data))
+            #print("Recieved:",data," ",len(str_ret)," ",len(data))
             if(len(str_ret) <= 3):
                 int_ret = int(str_ret)
                 if(int_ret > 0 and int_ret < 1000):
@@ -80,7 +79,7 @@ class PC_INTERFACE():
 
         return self.rpm
 
-
+"""
 box = PC_INTERFACE()
 
 pwm_values = []
@@ -89,24 +88,24 @@ voltage_values = []
 starttime = time.time()
 
 nukber = 1
-"""
-while True:
-    num = "3"+str(nukber)+"2"+"\r"
-    #box.arduino.write(bytes(str(num),'ascii'))
-    for i in num:
-        box.arduino.write(bytes('{}'.format(i),'ascii'))
-    #data = box.arduino.read()
-    data = box.arduino.readline()
-    #box.arduino.reset_input_buffer()
-    #
-    if data != b'':
-        print("Recieved:",data)
-        nukber = nukber +1;
-        if nukber >= 10:
-            nukber = 0
-    # 01010001
-    # 01000101
-"""
+
+# while True:
+#     num = "3"+str(nukber)+"2"+"\r"
+#     #box.arduino.write(bytes(str(num),'ascii'))
+#     for i in num:
+#         box.arduino.write(bytes('{}'.format(i),'ascii'))
+#     #data = box.arduino.read()
+#     data = box.arduino.readline()
+#     #box.arduino.reset_input_buffer()
+#     #
+#     if data != b'':
+#         print("Recieved:",data)
+#         nukber = nukber +1;
+#         if nukber >= 10:
+#             nukber = 0
+#     # 01010001
+#     # 01000101
+
 value = box.SetVoltage(1)
 time.sleep(0.5)
 value = box.SetVoltage(99)
@@ -142,3 +141,4 @@ ax1.plot(pwm_values,voltage_values, color = 'red')
 # Show plot
 
 plt.show()
+"""

@@ -26,6 +26,7 @@ from simple_pid import PID
 import SimpleSystemsAnimations
 import SimpleSystems
 from SimpleSystems import InvertedPendulum_MPC,ISystem, FederMasseSystem, Chessna2, FederMasseSystem_MPC,InvertedPendulumSS ,saveAsCSV ,readFromCSV
+from Voltage_Controller import PC_INTERFACE
 
 import BLDC_MOTOR
 
@@ -1285,6 +1286,145 @@ def BLDC_MOTOR_CONTROL():
     plt.legend(loc=4)
     plt.show()
 
+def AirFlow():
+    box = PC_INTERFACE()
+    value = box.SetVoltage(1)
+    time.sleep(0.5)
+    value = box.SetVoltage(1023)
+    time.sleep(0.5)
+    value = box.SetVoltage(0)
+    time.sleep(2)
+    """
+    timesteps = 1
+    sim_time = 200
+    input_Voltage = 5.0
+
+    recording_timeline = []
+    recording_inputs = []
+    recording_outputs = []
+    
+    for i in range(int(round(sim_time/timesteps))):
+        if i%30 == 0:
+            input_Voltage = int(random.random()*1023)
+
+        recording_inputs.append(input_Voltage)
+        recording_timeline.append(i*timesteps)
+        value = box.SetVoltage(input_Voltage)
+        recording_outputs.append(value)
+
+
+    data = np.hstack([np.reshape(recording_inputs,(len(recording_inputs),1)),
+                      np.reshape(recording_outputs,(len(recording_outputs),1))])
+    """    
+    data_name = "Voltage_to_pressure_200"
+    #SimpleSystems.saveAsCSV(data_name, data)
+    data = SimpleSystems.readFromCSV(data_name)
+
+    """
+    ### PLOTTING COLLECTED DATA
+    fig, ax1 = plt.subplots()
+    titlesting = "Voltage"
+    plt.title(titlesting)
+    ax1.set_ylabel("Pressure")
+    #ax1.plot(time,predictions,label='ALt_Pred.',c="r")
+    ax1.plot(data[:,1],label='Pressure Output',c="g")
+    #ax1.set_ylim([4500, 5500])
+    plt.legend(loc='upper center')
+    # ...
+    ax2 = ax1.twinx()
+    ax2.set_ylabel("Voltage")
+    ax2.plot(data[:,0],label="Voltage",c="c")
+    #ax2.plot(time,output_pitch_angle,label="output pitchangle",c="b")
+    #ax2.set_ylim([-90, 90])
+
+    plt.legend(loc='upper right')
+    plt.show()
+
+    """
+    
+    #### DEEPC PREDICTION PART
+    #print("len data:", len(data)," data: ",data,"shape: ",np.shape(data))
+    T_ini = 3
+    T_f = 10
+    settings = {"lambda_s":100000000,
+                "lambda_g":10000000,
+                "out_constr_lb":[-np.inf],
+                "out_constr_ub":[np.inf],
+                "in_constr_lb":[1],
+                "in_constr_ub":[1023],
+                "regularize":True,
+                "verbose":False}
+
+    # Set up the Controller
+    ctrl = DeePC.Controller(data,T_ini,T_f,1,1,**settings)
+    SOLLWERT = 500
+    ctrl.updateReferenceWaypoint([SOLLWERT])
+    ctrl.updateTrackingCost_Q([[1]])
+    ctrl.updateControlCost_R([[1]])
+
+    predictions_y = [0]
+    applied_inputs = [0]
+    system_outputs = [0]
+    soll = [SOLLWERT]
+    timeline = [0]
+    #pid = PID(0.9, 10, 0.1, setpoint=SOLLWERT)
+    #pid.output_limits = (-5.0, 5.0)
+    #pid.sample_time = 0.005
+    Control_input = 0
+    prediction = 0
+    u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
+    for i in range(0,200): 
+        if i == 100:
+            SOLLWERT = 100
+            ctrl.updateReferenceWaypoint([SOLLWERT])
+        #     #pid.setpoint = SOLLWERT
+        timeline.append(i)
+        if i > T_f +3:
+            u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
+            Control_input = u[0][0]
+            prediction = y_star[0][0]      
+
+        
+
+        applied_input = Control_input
+        system_output = value = box.SetVoltage(applied_input)
+        # record:
+        soll.append(SOLLWERT)
+        predictions_y.append(prediction)
+        applied_inputs.append(applied_input)
+        system_outputs.append(system_output)
+        # update controller
+        ctrl.updateIn_Out_Measures([applied_input],[system_output])
+
+        # user output:
+        print("input: ",applied_input, " output: ", system_output, " prediction: ",prediction)
+        time.sleep(0.1)
+    
+
+    #track_mean,track_std = SimpleSystems.Evaluate_Tracking_Accuarcy(system_outputs,predictions_y)
+    #control_mean,control_std = SimpleSystems.Evaluate_Control_Accuarcy(soll,system_outputs)
+    #if scout: return track_mean,control_mean
+
+    fig, ax1 = plt.subplots()
+    titlesting = "DeePC control"
+    plt.title(titlesting,fontsize = 16)
+    ax1.set_ylabel("Outputs",fontsize = 16)
+    ax1.set_xlabel("Time",fontsize = 16)
+    #ax1.plot(data[:,1],label='Init Data')
+    ax1.plot(timeline,soll,label='set point',c="y")
+    ax1.plot(timeline,predictions_y,label='predictions',c="r")
+    ax1.plot(timeline,system_outputs,label="system behaviour",c="g")
+    plt.legend(loc='upper right')
+
+    # PLOT ON RIGHT AXIS
+    ax2 = ax1.twinx()
+    ax2.set_ylabel("Inputs",fontsize = 16)
+    ax2.plot(timeline,applied_inputs,label="applied inputs",c="b")
+    #ax2.plot(data[:,0],label='Init inputs')
+    #ax2.set_ylim([-7, 7])
+    plt.legend(loc='right')
+
+    plt.show()
 
 def scientific(x, pos):
     # x:  tick value - ie. what you currently see in yticks
@@ -1299,7 +1439,8 @@ def scientific(x, pos):
 #ISystem_scout_lg_ls()
 #ISystem_scout_Q_R()
 
-FederMasse(1,1,1,3)
+#FederMasse(1,1,1,3)
+AirFlow()
 #SMDSystem_scout_lg_ls()
 #SMDSystem_scout_Q_R()
 #main2()

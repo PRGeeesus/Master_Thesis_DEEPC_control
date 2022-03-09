@@ -97,8 +97,8 @@ def main():
         world.apply_settings(settings)
         starttick = world.tick()
 
-        starting_x = 7
-        starting_y = -80
+        starting_x = 10
+        starting_y = -70
         temp,starting_transform = cHelper.spawn_car(world,starting_x,starting_y)
         tm.ignore_lights_percentage(temp,100) # use this only when record data. It makes the car ignore all red lights
         for v in actor_list:
@@ -110,8 +110,10 @@ def main():
 
         #cHelper.drawWaypoints(data,world,[10,0,255],0.0)
         time.sleep(2)     
-        cHelper.recordData(client,world,temp,"sample_waypoints_3",40,400)
-
+        cHelper.recordData(client,world,temp,"sample_waypoints_3",20,400)
+        client.apply_batch([carla.command.DestroyActor(x) for x in actor_list])
+        carla.command.DestroyActor(temp)
+        
     except KeyboardInterrupt:
         print("Simulation terminated by Hand")
         
@@ -121,10 +123,10 @@ def main():
         print('done.')
 
     finally:
-        pass
-
+        
         print('destroying actors')
         client.apply_batch([carla.command.DestroyActor(x) for x in actor_list])
+        
         actor_list.clear()
         print('done.')
 

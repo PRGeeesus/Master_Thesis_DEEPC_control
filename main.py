@@ -57,32 +57,39 @@ print(u[0],y[0],u_star[0],y_star[0])
 
 exit()
 """
-Sim = Simulator([0,0],1,1)
+Sim = Simulator([10,260],3,5)
 
 def main():
     # load the pre-recorded data
     #data2 = cHelper.readFromCSV("sample_waypoints")
     #data2 = cHelper.readFromCSV("sample_waypoints_2")
-    data2 = cHelper.readFromCSV("sample_waypoints_straight_2D")
-    #data2 = cHelper.readFromCSV("sample_waypoints_3")
+    #data2 = cHelper.readFromCSV("sample_waypoints_straight_2D")
+    data2 = cHelper.readFromCSV("sample_waypoints_3")
     #data2 = cHelper.readFromCSV("manual_recording")
-    #data2 = data2[:350]
-    T_ini = 2
-    T_f = 20
+    #data2 = data2[:250]
+    T_ini = 4
+    T_f = 30
     settings = {"lambda_s":100,
-                "lambda_g":1,
-                "out_constr_lb":[-10,],
-                "out_constr_ub":[100000],
-                "in_constr_lb":[0],
-                "in_constr_ub":[1]}
+                "lambda_g":100,
+                "out_constr_lb":[-100,-100,-100,-100,-np.pi/2],
+                "out_constr_ub":[100,100,100,100,np.pi/2],
+                "in_constr_lb":[0.18,-0.7,0],
+                "in_constr_ub":[0.20,0.7,1]}
+    print("Data length:", len(data2))
+    C3 = DeePC_OSQP.Controller(data2,T_ini,T_f,3,5,**settings)
 
-    C3 = DeePC_OSQP.Controller(data2,T_ini,T_f,1,1,**settings)
 
-
-    reference = [40]
+    reference = [4,15,0,0,0.8] #realtice to car spawn
     print("Reference Point is:",reference)
     C3.updateReferenceWaypoint(reference)
-    #C3.updateReferenceInput([0.2 ,0.0, 0.0])
+    C3.updateControlCost_R([[1,0,0],[0,8,0],[0,0,100]])
+    #C3.updateTrackingCost_Q([[1,0,0],[0,1,0],[0,0,1]])
+    C3.updateTrackingCost_Q([[0.1,0,0,0,0],
+                             [0,0.1,0,0,0],
+                             [0,0,0.1,0,0],
+                             [0,0,0,0.1,0],
+                             [0,0,0,0,1000]])
+
     
     print("Initalize World:")
     Sim.InitWorld()
@@ -95,34 +102,42 @@ def main():
     #Sim.resetVehicle()
     tick = 0
     brake_in = 0
-    while(tick < 400):
+    while(tick < 20000):
+
         tick = tick + 1
         #start filling y_ini and u_ini
-        Sim.DrawReferencePoint([reference[0],0])
+        Sim.DrawReferencePoint(reference)
         #optim_control,prediction = controller.getOptimalControlSequence() # workd exepet for the equality constrain
         u,y,u_star,y_star,g = C3.getInputOutputPrediction()
             
-        throttle_in = u_star[0][0]
-        #steer_in = u_star[0][1]
+        throttle_in = u[0][0]
+        steer_in = u[0][1]
         #brake_in = u_star[0][2]
-        #brake_in = 0
-        Sim.ControlVehicle(throttle_in,0,brake_in,True)
+        brake_in = 0
+        Sim.ControlVehicle(throttle_in,steer_in,brake_in,False)
         
 
         outputs = Sim.GetVehicleInfo()
-        outputs_full = outputs
-        outputs = [outputs[1]+140.0]
-        #inputs = [throttle_in, steer_in,brake_in]
-        inputs = [throttle_in]
-        C3.updateIn_Out_Measures(inputs,outputs,True)
-        Sim.UpdateRecordingData(reference,inputs,outputs,y_star[0][0])
-        #print("check: ",inputs,outputs,y_star[0])
-        Sim.DrawPredictionPoint([0,y_star[0][0]])
-        if outputs[0] < 52 and outputs[0] > 49:
-            brake_in = 1
-            break
+        #outputs = [outputs[1]+140.0]
+        inputs = [throttle_in, steer_in,brake_in]
+        #inputs = [throttle_in]
+        C3.updateIn_Out_Measures(inputs,outputs)
+        
+        print("Controls:",['{:.2f}'.format(i) for i in inputs],
+              " Prediction: ",['{:.2f}'.format(i) for i in y[0]],
+              " Outputs: ",['{:.2f}'.format(i) for i in outputs])
 
+        Sim.UpdateRecordingData(reference,inputs,outputs,y[0])
+        #print(y[:,:2])
+        Sim.DrawPredictionPoint(y[:,:2])
 
+        #print("Dist to point:",np.sqrt((outputs[0]-reference[0])**2 + (outputs[1]-reference[1])**2))
+        if np.sqrt((outputs[0]-reference[0])**2 + (outputs[1]-reference[1])**2) < 3:
+            print("Close enough")
+            reference = [8,20,0,0,0]
+            C3.updateReferenceWaypoint(reference)
+
+    print("Siumlation done by ticks")
     Sim.plot_results()
     Sim.CleanUpAllActors()
 

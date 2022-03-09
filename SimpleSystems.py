@@ -7,7 +7,7 @@ import math
 import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
-
+import random
 import osqp
 import scipy as sp
 from scipy import sparse
@@ -44,7 +44,7 @@ class ISystem:
         #inputt = self.truncateInput(input)
         inputt = input
         self.u = inputt
-        self.y = self.x + self.T * inputt
+        self.y = self.x + (self.T * inputt) + (random.random())*0.01
         self.x = self.y
         self.SystemHistory = np.vstack((self.SystemHistory,[inputt,self.y]))
         return self.y
@@ -466,7 +466,7 @@ class FederMasseSystem:
         self.in_force = [0]
 
     def OneTick(self,input_force):
-        u = np.array([input_force])
+        u = np.array([input_force+(random.random())*0.01])
         self.x0 = np.matmul(self.A,self.x0) + np.matmul(self.B,u)
         self.out_pos.append(self.x0[0])
         self.out_vel.append(self.x0[1])

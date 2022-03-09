@@ -9,6 +9,9 @@
 
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
+import matplotlib.ticker as mtick
+from mpl_toolkits.mplot3d.axes3d import Axes3D
+import matplotlib
 
 import random
 import DeePC_OSQP as DeePC
@@ -26,12 +29,12 @@ from SimpleSystems import InvertedPendulum_MPC,ISystem, FederMasseSystem, Chessn
 
 import BLDC_MOTOR
 
-def ISystem_1(l_s,l_g,Q,R):
+def ISystem_1(l_s,l_g,Q,R,scout = False):
     system1 = ISystem(0,0,1)
     input = 0.0
     time_t = [0]
-    """
-    for i in range(1,100):
+    
+    for i in range(1,150):
         
         #system1.OneTick(input)
         #if i > 15 < 30:
@@ -39,20 +42,23 @@ def ISystem_1(l_s,l_g,Q,R):
         #if i >=30:
         #    input = 1
         
-        if i%10 ==0:
+        if i%50 ==0:
             input = (random.random()-0.5)*2
         system1.OneTick(input)
         #system1.OneTick(random.random())
         #system1.OneTick(np.abs(np.sin(i*0.1)))
         time_t.append(i)
-    """
+    
     filename = "I-SYSTEM-DATA"
     #saveAsCSV(filename,system1.SystemHistory)
     
-    data_2 = readFromCSV(filename)
+    #data_2 = readFromCSV(filename)
+    data_2 = system1.SystemHistory
+    print("Data Length: ",len(data_2))
 
     outputs = system1.SystemHistory[:,1]
     inputs = system1.SystemHistory[:,0]
+
     """
     fig, ax1 = plt.subplots()
     plt.title("Integrating System")
@@ -75,39 +81,39 @@ def ISystem_1(l_s,l_g,Q,R):
 
     original_data = outputs
 
-    T_ini =3# über 3 = schwingen, unter 3 = linearer
-    T_f = 7
+    T_ini =3
+    T_f = 10
     Controller_settings = {"lambda_s":l_s,
                            "lambda_g":l_g,
-                            "out_constr_lb":[-30],
-                            "out_constr_ub":[30],
+                            "out_constr_lb":[-1000],
+                            "out_constr_ub":[1000],
                             "in_constr_lb":[-1],
                             "in_constr_ub":[1],
                             "regularize":True,
-                            "verbose":True}
+                            "verbose":False}
 
     ctrl = DeePC.Controller(data_2,T_ini,T_f,1,1,**Controller_settings)
-    SOLLWERT = 15
+    SOLLWERT = 5
     ctrl.updateReferenceWaypoint([SOLLWERT])
     #ctrl.updateReferenceInput([0.5])
  
     ctrl.updateControlCost_R([[R]]) # as I increase, only small changes in control
     ctrl.updateTrackingCost_Q([[Q]]) #as I increase, prediction gets closer to SOLLWERT?
-    #ctrl.updateReferenceInput([0.5])
+    
+    
     system1.resetSystem()
 
     predictions_y = [0]
     applied_inputs = []
     soll = [SOLLWERT]
-    u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
     prediction = 0
     control_input = 0
     for i in range(1,100):
         if i == 50:
-            ctrl.updateReferenceWaypoint([10])
+            ctrl.updateReferenceWaypoint([15])
 
         #ctrl.updateReferenceWaypoint([10*np.sin((np.pi*2*(1/200)*i))+10])
-        if i > T_ini+3:
+        if i > T_ini+2:
             u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
             prediction = y_star[0][0]
             control_input = u_star[0][0]
@@ -121,15 +127,16 @@ def ISystem_1(l_s,l_g,Q,R):
     outputs2 = system1.SystemHistory[:,1]
     track_mean,track_std = SimpleSystems.Evaluate_Tracking_Accuarcy(outputs2[20:],predictions_y[20:])
     control_mean,control_std = SimpleSystems.Evaluate_Control_Accuarcy(soll[20:],outputs2[20:])
-    #return track_mean,control_mean
+    if scout: return track_mean,control_mean
     
     fig, ax1 = plt.subplots()
-    titlesting = "T_ini:" + str(T_ini) + " T_f:" + str(T_f) +" lg:" + str(ctrl.lambda_g) + " ls:"+ str(ctrl.lambda_s)
+    titlesting = "I System DEEPC Controlled to" + str(SOLLWERT)
     plt.title(titlesting)
     ax1.set_ylabel("Outputs")
+    ax1.set_xlabel("time")
     #ax1.plot(original_data,label='Init Data')
-    ax1.plot(soll,label='SOLLWERT',c="y")
-    ax1.plot(predictions_y,label='predictions',c="r")
+    ax1.plot(soll,label='setpoint',c="y")
+    ax1.plot(predictions_y,label='prediction',c="r")
     ax1.plot(outputs2,label="system behaviour",c="g")
     
     plt.legend(loc=8)
@@ -145,21 +152,17 @@ def ISystem_1(l_s,l_g,Q,R):
 def ISystem_scout_lg_ls():
     tracking_means = []
     control_means = []
-    ls_factor = 20
-    ls_scale = 200
     
     #ls_range = range(1,ls_scale,ls_factor)
-    ls_range  = [10**i for i in range(4,10)]
-    lg_factor = 1000
-    lg_scale = 300000
-    #lg_range = range(1,lg_scale,lg_factor)
-    lg_range = [10**i for i in range(12)]
+    ls_range  = [10**i for i in range(1,7)]
+
+    lg_range = [i for i in range(1,10,1)]
     
     for i in ls_range:
         temp1 = []
         temp2 = []
         for j in lg_range:
-            tm,cm = ISystem_1(i,j)
+            tm,cm = ISystem_1(i,j,1,1,True)
             temp1.append(tm)
             temp2.append(cm)
         tracking_means.append(temp1)
@@ -174,28 +177,64 @@ def ISystem_scout_lg_ls():
     filename = "control_means_ls_lg_scan_i_system"
     saveAsCSV(filename,control_means)
 
+    """
+    fig = plt.figure(figsize=(14,6))
 
-    fig, ax = plt.subplots()
-    im = ax.imshow(tracking_means,cmap='YlGn')
-    ax.set_ylabel("lambda s")
-    ax.set_xlabel("lambda g")
-    ax.set_yticks(np.arange(tracking_means.shape[0]), minor=False)
-    ax.set_xticks(np.arange(tracking_means.shape[1]), minor=False)
-    plt.colorbar(im)
-    ax.set_xticklabels(lg_range,rotation=90)
-    #plt.ticklabel_format(axis='both', style='sci', scilimits=(-2,2))
-    scientific_formatter = FuncFormatter(scientific)
-    ax.xaxis.set_major_formatter(scientific_formatter)
-    #ax.yaxis.set_major_formatter(scientific_formatter)
-    
-    ax.set_yticklabels(ls_range)
-
-    ax.invert_yaxis()
-    ax.set_title("Mean Tracking Difference of Lambda g vs Lambda s")
-    fig.tight_layout()
-
+    x, y = np.meshgrid(lg_range,ls_range)
+    print(np.shape(x),np.shape(y),np.shape(tracking_means))
+    # surface_plot with color grading and color bar
+    ax = fig.add_subplot(1, 1, 1, projection='3d')
+    p = ax.plot_surface(x,y, tracking_means, rstride=1, cstride=1, cmap=matplotlib.cm.coolwarm, linewidth=0, antialiased=False)
+    cb = fig.colorbar(p, shrink=0.5)
     plt.show()
 
+    """
+    # MEAN TRACKING DIFFERENCE
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    #norm = matplotlib.colors.LogNorm(tracking_means.mean() + 0.5 * tracking_means.std(), tracking_means.max(), clip='True')
+    #im = ax.imshow(tracking_means, cmap='YlGn', norm=norm, origin="lower")
+    im = ax.imshow(tracking_means,cmap='YlGn')
+    ax.set_ylabel("lambda s",fontsize = 16)
+    ax.set_xlabel("lambda g",fontsize = 16)
+    ax.set_yticks(np.arange(tracking_means.shape[0]), minor=False)
+    ax.set_xticks(np.arange(tracking_means.shape[1]), minor=False)
+
+
+
+    plt.colorbar(im)
+
+    ax.set_yticklabels(['{:.1E}'.format(y) for y in ls_range]); # use LaTeX formatted labels
+    ax.set_xticklabels(['{:.1E}'.format(x) for x in lg_range],rotation=45); # use LaTeX formatted labels
+
+    
+
+    ax.invert_yaxis()
+    ax.set_title("Prediction: Lambda g vs Lambda s",fontsize = 16)
+    fig.tight_layout()
+    plt.show()
+    
+
+    # MEAN COntrol Difference
+
+    
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    im = ax.imshow(control_means,cmap='YlGn')
+    ax.set_ylabel("lambda s",fontsize = 16)
+    ax.set_xlabel("lambda g",fontsize = 16)
+    ax.set_yticks(np.arange(control_means.shape[0]), minor=False)
+    ax.set_xticks(np.arange(control_means.shape[1]), minor=False)
+    plt.colorbar(im)
+    ax.set_yticklabels(['{:.1E}'.format(y) for y in ls_range]); # use LaTeX formatted labels
+    ax.set_xticklabels(['{:.1E}'.format(x) for x in lg_range],rotation=45); # use LaTeX formatted labels
+
+
+    ax.invert_yaxis()
+    ax.set_title("Setpoint: Lambda g vs Lambda s",fontsize = 16)
+    fig.tight_layout()
+    plt.show()
 
 def ISystem_scout_Q_R():
     tracking_means = []
@@ -204,14 +243,14 @@ def ISystem_scout_Q_R():
     ls_scale = 200
     
     #ls_range = range(1,ls_scale,ls_factor)
-    Q  = [10**i for i in range(1,10)]
-    R  = [10**i for i in range(1,10)]
+    Q  = [10**i for i in range(1,8)]
+    R  = [i for i in range(1,100,10)]
     
     for i in R:
         temp1 = []
         temp2 = []
         for j in Q:
-            tm,cm = ISystem_1(1,1,j,i)
+            tm,cm = ISystem_1(1,1,j,i,True)
             temp1.append(tm)
             temp2.append(cm)
         tracking_means.append(temp1)
@@ -227,48 +266,39 @@ def ISystem_scout_Q_R():
     saveAsCSV(filename,control_means)
 
 
-    fig, ax = plt.subplots()
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
     im = ax.imshow(tracking_means,cmap='YlGn')
-    ax.set_ylabel("R")
-    ax.set_xlabel("Q")
+    ax.set_ylabel("R",fontsize = 16,rotation=0,weight = 'bold',labelpad=25)
+    ax.set_xlabel("Q",fontsize = 16,weight = 'bold')
     ax.set_yticks(np.arange(tracking_means.shape[0]), minor=False)
     ax.set_xticks(np.arange(tracking_means.shape[1]), minor=False)
     plt.colorbar(im)
-    ax.set_xticklabels(Q,rotation=90)
-    #plt.ticklabel_format(axis='both', style='sci', scilimits=(-2,2))
-    scientific_formatter = FuncFormatter(scientific)
-    ax.xaxis.set_major_formatter(scientific_formatter)
-    #ax.yaxis.set_major_formatter(scientific_formatter)
-    
-    ax.set_yticklabels(R)
+    ax.set_yticklabels(['{:.1E}'.format(y) for y in R],fontsize = 14); # use LaTeX formatted labels
+    ax.set_xticklabels(['{:.1E}'.format(x) for x in Q],rotation=45,fontsize = 14); # use LaTeX formatted labels
+
 
     ax.invert_yaxis()
-    ax.set_title("Mean Tracking Difference of Q vs R")
+    ax.set_title("Prediction: Q vs R",fontsize = 20,weight = 'bold',pad = 25)
     fig.tight_layout()
-
     plt.show()
 
-    fig, ax = plt.subplots()
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
     im = ax.imshow(control_means,cmap='YlGn')
-    ax.set_ylabel("R")
-    ax.set_xlabel("Q")
+    ax.set_ylabel("R",fontsize = 16,rotation=0,weight = 'bold',labelpad=25)
+    ax.set_xlabel("Q",fontsize = 16,weight = 'bold')
     ax.set_yticks(np.arange(control_means.shape[0]), minor=False)
     ax.set_xticks(np.arange(control_means.shape[1]), minor=False)
     plt.colorbar(im)
-    ax.set_xticklabels(Q,rotation=90)
-    #plt.ticklabel_format(axis='both', style='sci', scilimits=(-2,2))
-    scientific_formatter = FuncFormatter(scientific)
-    ax.xaxis.set_major_formatter(scientific_formatter)
-    #ax.yaxis.set_major_formatter(scientific_formatter)
-    
-    ax.set_yticklabels(R)
+    ax.set_yticklabels(['{:.1E}'.format(y) for y in R],fontsize = 14); # use LaTeX formatted labels
+    ax.set_xticklabels(['{:.1E}'.format(x) for x in Q],rotation=45,fontsize = 14); # use LaTeX formatted labels
+
 
     ax.invert_yaxis()
-    ax.set_title("Mean Output to Setpoint Difference of Q vs R")
+    ax.set_title("Set-point: Q vs R",fontsize = 20,weight = 'bold',pad = 25)
     fig.tight_layout()
-
-    plt.show()    
-
+    plt.show()
 
 def main2():
     SOLLWERT = 10
@@ -738,16 +768,18 @@ def Chessna_2():
     plt.legend(loc=4)
     plt.show()
 
-def FederMasse():
+def FederMasse(l_s,l_g,Q,R,scout = False):
     timesteps = 1
     sim_time = 200
     input_force = 5.0
     sys = FederMasseSystem(timesteps)
-    timeline = [0.0]
-    """
+    timeline = []
+    
     for i in range(round(sim_time/timesteps)):
         if i == 30:
-            input_force = random.random()
+            input_force = random.random()*5
+        if i == 60:
+            input_force = random.random()*5
         timeline.append(i*timesteps)
         sys.OneTick(input_force)
 
@@ -755,50 +787,60 @@ def FederMasse():
     inputs = sys.in_force
     x_out = sys.out_pos
     data = np.hstack([np.reshape(inputs,(len(inputs),1)),np.reshape(x_out,(len(x_out),1))])
-    """
+    
     # SimpleSystems.saveAsCSV("Feder_Masse_"+str(len(data2)), data2)
-    data = SimpleSystems.readFromCSV("Feder_Masse_101")
-    #data = SimpleSystems.readFromCSV("MOTOR_RAMP_UP")
-    #data = data[100:150]
+    #data = SimpleSystems.readFromCSV("Feder_Masse_101")
+    #data = data[:300]
+    """
     ### PLOTTING COLLECTED DATA
-    # fig, ax1 = plt.subplots()
-    # titlesting = "FederMasse System - Sprung"
-    # plt.title(titlesting)
-    # ax1.set_ylabel("length")
-    # #ax1.plot(time,predictions,label='ALt_Pred.',c="r")
-    # ax1.plot(timeline,x_out,label='x_out',c="g")
-    # #ax1.set_ylim([4500, 5500])
-    # plt.legend(loc=8)
-    # # ...
-    # ax2 = ax1.twinx()
-    # ax2.set_ylabel(" Force")
-    # ax2.plot(timeline,inputs,label="applied input force",c="c")
-    # #ax2.plot(time,output_pitch_angle,label="output pitchangle",c="b")
-    # #ax2.set_ylim([-90, 90])
+    fig, ax1 = plt.subplots()
+    titlesting = "FederMasse System - Sprung"
+    plt.title(titlesting)
+    ax1.set_ylabel("Position x")
+    #ax1.plot(time,predictions,label='ALt_Pred.',c="r")
+    ax1.plot(timeline,x_out,label='Output Position',c="g")
+    #ax1.set_ylim([4500, 5500])
+    plt.legend(loc='upper center')
+    # ...
+    ax2 = ax1.twinx()
+    ax2.set_ylabel("Force")
+    ax2.plot(timeline,inputs,label="Input Force",c="c")
+    #ax2.plot(time,output_pitch_angle,label="output pitchangle",c="b")
+    #ax2.set_ylim([-90, 90])
 
-    # plt.legend(loc=4)
-    # plt.show()
-
+    plt.legend(loc='upper right')
+    plt.show()
+    """
     #### DEEPC PREDICTION PART
-    T_ini = 3
-    T_f = 20
-    settings = {"lambda_s":10000,
-                "lambda_g":1,
+    print("len data:", len(data))
+    T_ini = 4
+    T_f = 15
+    settings = {"lambda_s":l_s,
+                "lambda_g":l_g,
                 "out_constr_lb":[-np.inf],
                 "out_constr_ub":[np.inf],
                 "in_constr_lb":[-30],
-                "in_constr_ub":[30]}
+                "in_constr_ub":[30],
+                "regularize":True,
+                "verbose":False}
 
     ctrl = DeePC.Controller(data,T_ini,T_f,1,1,**settings)
     SOLLWERT = 5
     ctrl.updateReferenceWaypoint([SOLLWERT])
     #ctrl.updateReferenceInput([0.5])
-    ctrl.updateControlCost_R([[1]])
-    ctrl.updateTrackingCost_Q([[100]])
-    #ctrl.updateReferenceInput([0.5])
+    ctrl.updateTrackingCost_Q([[Q]])
+    ctrl.updateControlCost_R([[R]])
+
     sys.resetSystem()
 
     predictions_y = [0]
+    prediction_1 = []
+    prediction_2 = []
+    prediction_3 = []
+    one_time_offset = 10
+    x_range_prediction_1 = [i for i in range(T_f+one_time_offset*1,T_f+T_f+one_time_offset*1)]
+    x_range_prediction_2 = [i for i in range(T_f+one_time_offset*2,T_f+T_f+one_time_offset*2)]
+    x_range_prediction_3 = [i for i in range(T_f+one_time_offset*3,T_f+T_f+one_time_offset*3)]
     applied_inputs = []
     soll = [SOLLWERT]
     timeline = [0]
@@ -809,7 +851,7 @@ def FederMasse():
     prediction = 0
     u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
     for i in range(0,200): 
-        if i == 80:
+        if i == 100:
             SOLLWERT = -5
             ctrl.updateReferenceWaypoint([SOLLWERT])
         #     #pid.setpoint = SOLLWERT
@@ -818,6 +860,15 @@ def FederMasse():
             u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
             Control_input = u[0][0]
             prediction = y_star[0][0]
+        if i == T_f + one_time_offset*1:
+            prediction_1 = y_star[:,0]
+        if i == T_f + one_time_offset*2:
+            prediction_2 = y_star[:,0]
+        if i == T_f + one_time_offset*3:
+            prediction_3 = y_star[:,0]
+        
+
+
         #print(u,u_star)
         #control = pid(sys.out_pos[-1])
         soll.append(SOLLWERT)
@@ -835,27 +886,183 @@ def FederMasse():
     #                    [outputs2[i] for i in range(10)])
     track_mean,track_std = SimpleSystems.Evaluate_Tracking_Accuarcy(x_out,predictions_y)
     control_mean,control_std = SimpleSystems.Evaluate_Control_Accuarcy(soll,x_out)
-
+    if scout: return track_mean,control_mean
 
     fig, ax1 = plt.subplots()
-    titlesting = "DEEPC CONTROLLED to " + str(SOLLWERT) + ""
-    plt.title(titlesting)
-    ax1.set_ylabel("Outputs")
+    titlesting = "DeePC control"
+    plt.title(titlesting,fontsize = 16)
+    ax1.set_ylabel("Outputs",fontsize = 16)
+    ax1.set_xlabel("Time",fontsize = 16)
     #ax1.plot(data[:,1],label='Init Data')
-    ax1.plot(timeline,soll,label='SOLLWERT',c="y")
-    ax1.plot(timeline,predictions_y,label='predictions',c="r")
+    ax1.plot(timeline,soll,label='set point',c="y")
+    #ax1.plot(timeline,predictions_y,label='predictions',c="r")
     ax1.plot(timeline,x_out,label="system behaviour",c="g")
+    #ax1.plot(x_range_prediction_1,prediction_1,label='snapshot prediction 1',c="purple")
+    #ax1.plot(x_range_prediction_2,prediction_2,label='snapshot prediction 2',c="purple")
+    #ax1.plot(x_range_prediction_3,prediction_3,label='snapshot prediction 3',c="purple")
     
-    plt.legend(loc=8)
+    #plt.legend(loc='lower right')
+    plt.legend(loc='upper right')
     # ...
     ax2 = ax1.twinx()
-    ax2.set_ylabel("Inputs")
+    ax2.set_ylabel("Inputs",fontsize = 16)
     ax2.plot(timeline,inputs,label="applied inputs",c="b")
     #ax2.plot(data[:,0],label='Init inputs')
     #ax2.set_ylim([-7, 7])
 
-    plt.legend(loc=4)
+    plt.legend(loc='right')
     plt.show()
+
+
+def SMDSystem_scout_lg_ls():
+    tracking_means = []
+    control_means = []
+    
+    #ls_range = range(1,ls_scale,ls_factor)
+    ls_range  = [10**i for i in range(1,10)]
+
+    lg_range = [10**i for i in range(1,10)]
+    
+    for i in ls_range:
+        temp1 = []
+        temp2 = []
+        for j in lg_range:
+            tm,cm = FederMasse(i,j,1,1,True)
+            temp1.append(tm)
+            temp2.append(cm)
+        tracking_means.append(temp1)
+        control_means.append(temp2)
+    print("tracking_means len:",len(tracking_means)," type: ",type(tracking_means), " shape: ",np.shape(tracking_means))
+    tracking_means = np.asarray(tracking_means)
+    control_means = np.asarray(control_means)
+    print("tracking_means len:",len(tracking_means)," type: ",type(tracking_means), " shape: ",np.shape(tracking_means))
+    
+    filename = "tracking_mean_ls_lg_scan_SMD_system"
+    saveAsCSV(filename,tracking_means)
+    filename = "control_means_ls_lg_scan_SMD_system"
+    saveAsCSV(filename,control_means)
+
+    """
+    fig = plt.figure(figsize=(14,6))
+
+    x, y = np.meshgrid(lg_range,ls_range)
+    print(np.shape(x),np.shape(y),np.shape(tracking_means))
+    # surface_plot with color grading and color bar
+    ax = fig.add_subplot(1, 1, 1, projection='3d')
+    p = ax.plot_surface(x,y, tracking_means, rstride=1, cstride=1, cmap=matplotlib.cm.coolwarm, linewidth=0, antialiased=False)
+    cb = fig.colorbar(p, shrink=0.5)
+    plt.show()
+
+    """
+    # MEAN TRACKING DIFFERENCE
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    #norm = matplotlib.colors.LogNorm(tracking_means.mean() + 0.5 * tracking_means.std(), tracking_means.max(), clip='True')
+    #im = ax.imshow(tracking_means, cmap='YlGn', norm=norm, origin="lower")
+
+    # 
+    data = tracking_means[:][:]
+    im = ax.imshow(data,cmap='YlGn')
+    ax.set_ylabel("lambda s",fontsize = 16)
+    ax.set_xlabel("lambda g",fontsize = 16)
+    ax.set_yticks(np.arange(data.shape[0]), minor=False)
+    ax.set_xticks(np.arange(data.shape[1]), minor=False)
+    plt.colorbar(im)
+    ax.set_yticklabels(['{:.1E}'.format(y) for y in ls_range]); # use LaTeX formatted labels
+    ax.set_xticklabels(['{:.1E}'.format(x) for x in lg_range],rotation=45); # use LaTeX formatted labels
+
+    ax.invert_yaxis()
+    ax.set_title("Prediction: Lambda g vs Lambda s",fontsize = 16)
+    fig.tight_layout()
+    plt.show()
+    
+
+    # MEAN COntrol Difference
+
+    data = control_means
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    im = ax.imshow(data,cmap='YlGn')
+    ax.set_ylabel("lambda s",fontsize = 16)
+    ax.set_xlabel("lambda g",fontsize = 16)
+    ax.set_yticks(np.arange(data.shape[0]), minor=False)
+    ax.set_xticks(np.arange(data.shape[1]), minor=False)
+    plt.colorbar(im)
+    ax.set_yticklabels(['{:.1E}'.format(y) for y in ls_range]); # use LaTeX formatted labels
+    ax.set_xticklabels(['{:.1E}'.format(x) for x in lg_range],rotation=45); # use LaTeX formatted labels 
+
+    ax.invert_yaxis()
+    ax.set_title("Set-point: Lambda g vs Lambda s",fontsize = 16)
+    fig.tight_layout()
+    plt.show()
+
+def SMDSystem_scout_Q_R():
+    tracking_means = []
+    control_means = []
+    ls_factor = 20
+    ls_scale = 200
+    
+    #ls_range = range(1,ls_scale,ls_factor)
+    Q  = [i for i in range(1,1000,100)]
+    R  = [i for i in range(1,1000,100)]
+    print(Q,R)
+    
+    for i in R:
+        temp1 = []
+        temp2 = []
+        for j in Q:
+            tm,cm = FederMasse(1,1,j,i,True)
+            temp1.append(tm)
+            temp2.append(cm)
+        tracking_means.append(temp1)
+        control_means.append(temp2)
+    print("tracking_means len:",len(tracking_means)," type: ",type(tracking_means), " shape: ",np.shape(tracking_means))
+    tracking_means = np.asarray(tracking_means)
+    control_means = np.asarray(control_means)
+    print("tracking_means len:",len(tracking_means)," type: ",type(tracking_means), " shape: ",np.shape(tracking_means))
+    
+    filename = "tracking_mean_ls_lg_scan_i_system"
+    saveAsCSV(filename,tracking_means)
+    filename = "control_means_ls_lg_scan_i_system"
+    saveAsCSV(filename,control_means)
+
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    im = ax.imshow(tracking_means,cmap='YlGn')
+    ax.set_ylabel("R",fontsize = 16,rotation=0,weight = 'bold',labelpad=25)
+    ax.set_xlabel("Q",fontsize = 16,weight = 'bold')
+    ax.set_yticks(np.arange(tracking_means.shape[0]), minor=False)
+    ax.set_xticks(np.arange(tracking_means.shape[1]), minor=False)
+    plt.colorbar(im)
+    ax.set_yticklabels(['{:.1E}'.format(y) for y in R],fontsize = 14); # use LaTeX formatted labels
+    ax.set_xticklabels(['{:.1E}'.format(x) for x in Q],rotation=45,fontsize = 14); # use LaTeX formatted labels
+
+
+    ax.invert_yaxis()
+    ax.set_title("Prediction: Q vs R",fontsize = 20,weight = 'bold',pad = 25)
+    fig.tight_layout()
+    plt.show()
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    im = ax.imshow(control_means,cmap='YlGn')
+    ax.set_ylabel("R",fontsize = 16,rotation=0,weight = 'bold',labelpad=25)
+    ax.set_xlabel("Q",fontsize = 16,weight = 'bold')
+    ax.set_yticks(np.arange(control_means.shape[0]), minor=False)
+    ax.set_xticks(np.arange(control_means.shape[1]), minor=False)
+    plt.colorbar(im)
+    ax.set_yticklabels(['{:.1E}'.format(y) for y in R],fontsize = 14); # use LaTeX formatted labels
+    ax.set_xticklabels(['{:.1E}'.format(x) for x in Q],rotation=45,fontsize = 14); # use LaTeX formatted labels
+
+
+    ax.invert_yaxis()
+    ax.set_title("Set-point: Q vs R",fontsize = 20,weight = 'bold',pad = 25)
+    fig.tight_layout()
+    plt.show()
+
+
 
 def FederMasse_MPC():
 
@@ -1087,10 +1294,14 @@ def scientific(x, pos):
 #main5()
 #main3()
 #main4()
-ISystem_1(1,1,1,1)
+##ls lg Q R
+#ISystem_1(1,1,5,1)
 #ISystem_scout_lg_ls()
 #ISystem_scout_Q_R()
 
+FederMasse(1,1,1,3)
+#SMDSystem_scout_lg_ls()
+#SMDSystem_scout_Q_R()
 #main2()
 #Chessna()
 #Chessna_2()

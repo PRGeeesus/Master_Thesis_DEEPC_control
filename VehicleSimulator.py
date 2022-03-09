@@ -14,13 +14,12 @@ class Simulator:
         self.prediction_history = np.array([0 for i in range(output_size)])
         self.reference_history = np.array([0 for i in range(output_size)])
 
-        self.Crossing_1_offset_x = 10
-        self.Crossing_1_offset_y = -60
         self.Vehicle_start_point = Vehicle_start_pt
         self.Vehicle = None
         self.AutoPilotMode = True
         self.SetAutopilot(self.AutoPilotMode)
         self.Initalized = None
+        self.client = None
 
     def InitWorld(self):
         try:
@@ -39,8 +38,8 @@ class Simulator:
             self.world.apply_settings(settings)
 
             temp,starting_transform = cHelper.spawn_car(self.world,
-                                                        self.Vehicle_start_point[0]+self.Crossing_1_offset_x,
-                                                        self.Vehicle_start_point[1]+self.Crossing_1_offset_y)
+                                                        self.Vehicle_start_point[0],
+                                                        self.Vehicle_start_point[1])
             if temp is not None:
                 self.actor_list.append(temp)
 
@@ -66,10 +65,12 @@ class Simulator:
             self.Initalized = False
 
     def CleanUpAllActors(self):
+        #if self.actor_list  or self.client is not None:
         print('destroying actors')
         self.client.apply_batch([carla.command.DestroyActor(x) for x in self.actor_list])
         self.actor_list.clear()
-        print('done.')
+        print("Done")
+            
 
     def ControlVehicle(self,throttle,steer,brake,verbose = False):
         if self.AutoPilotMode == True:
@@ -87,9 +88,15 @@ class Simulator:
     
     def GetVehicleInfo(self):
         transform = self.Vehicle.get_transform()
-        outputs = [transform.location.x-self.Vehicle_start_point[0],
-                   transform.location.y-self.Vehicle_start_point[1],
-                   transform.rotation.yaw]
+        velocity = self.Vehicle.get_velocity()
+        #outputs = [transform.location.x-self.starting_x,
+        #           transform.location.y-self.starting_y,
+        #           transform.rotation.yaw]
+        outputs = [transform.location.x-self.starting_x,
+        transform.location.y-self.starting_y,
+        velocity.x,
+        velocity.y,
+        (np.pi/2)*(transform.rotation.yaw/180)]
         return outputs
 
 
@@ -103,17 +110,17 @@ class Simulator:
     def resetVehicle(self):
         print(type(self.Vehicle))
         self.Vehicle.set_target_velocity(carla.Vector3D(0.0,0.0,0.0))
-        self.Vehicle.set_transform(carla.Transform(carla.Location(self.Vehicle_start_point[0],self.Vehicle_start_point[0],2.0)),
+        self.Vehicle.set_transform(carla.Transform(carla.Location(self.Vehicle_start_point[0],self.Vehicle_start_point[1],2.0)),
                                                     carla.Rotation(0.0,0.0,90.0))
 
     def DrawReferencePoint(self,reference):
         cHelper.drawWaypoints([reference],self.world,[255,0,0],1.0,self.offset)
     
     def DrawPredictionPoint(self,predictions):
-        cHelper.drawWaypoints([predictions],self.world,[0,0,255],1.0,self.offset)
+        cHelper.drawWaypoints(predictions,self.world,[0,0,255],1.0,self.offset)
 
     def UpdateRecordingData(self,reference,inpuuut,output,prediction):
-        self.prediction_history = np.vstack((self.prediction_history,prediction))
+        #self.prediction_history = np.vstack((self.prediction_history,prediction))
         self.reference_history = np.vstack((self.reference_history,reference))
         self.input_history = np.vstack((self.input_history,inpuuut))
         self.output_history = np.vstack((self.output_history,output))

@@ -69,6 +69,7 @@ def drawWaypoints(waypoints_file,world,colour,life_time,xyoffset = [0.0,0.0]):
     #print(waypoints)
     debug = world.debug
     for point in waypoints_file:
+        
         debug.draw_box(carla.BoundingBox(carla.Location(point[0] + xyoffset[0],point[1]+xyoffset[1],3),carla.Vector3D(0.3,0.3,0.3)), carla.Rotation(0,0,0),0.05, carla.Color(colour[0],colour[1],colour[2],0),life_time)
 
 def generateTestData(name,dataset_lengt = 350,datapoint_length = 6):
@@ -111,12 +112,15 @@ def recordData(client,world,car,name = "sample_waypoints",sample_interval_ms = 4
                 #print(time_ns," % ",sample_interval_ms*1000*1000," = ",time_ns % sample_interval_ms*1000*1000)
                 control = car.get_control()
                 transform = car.get_transform()
+                valocity = car.get_velocity()
                 if sample_waypoints[-1][0] != transform.location.x and sample_waypoints[-1][1] != transform.location.y:
                     data = [control.throttle,
                             control.steer,
                             control.brake,
                             transform.location.x-starting_x,
                             transform.location.y-starting_y,
+                            valocity.x,
+                            valocity.y,
                             transform.rotation.yaw/180*np.pi]
                     print(nr_datapoints," ",time_ns - prev_timestamp," Recoding: ",data)
                     #print(transform.location.x,transform.location.y,transform.rotation.yaw,control.throttle, control.steer, control.brake)

@@ -8,7 +8,7 @@ import matplotlib.animation as animation
 from matplotlib import style
 
 class PC_INTERFACE():
-    def __init__(self,port ='COM3',baudrate=115200,timeout=.00001):
+    def __init__(self,port ='COM5',baudrate=19200,timeout=.000001,parity=serial.PARITY_NONE,stopbits=serial.STOPBITS_ONE,bytesize=serial.EIGHTBITS):
         self.port = port
         self.baudrate = baudrate
         self.timeout = timeout
@@ -29,8 +29,10 @@ class PC_INTERFACE():
 
     def write_read(self,x):
         self.arduino.write(bytes(x, 'utf-8'))
+        #self.arduino.write(bytes(x,'ascii'))
         #time.sleep(0.05)
         data = self.arduino.readline()
+        
         return data
     
     def SetAnswer(self,a0,a1,echo):
@@ -45,11 +47,24 @@ class PC_INTERFACE():
         
     
     def SetVoltage(self,voltage):
-        payload = str(3)+str(voltage)+str('\n')
-        value = self.write_read(payload)
-
-        if self.verbose: print("Setting Voltage: Mode:3 voltage: "+ str(voltage) + " Answer:" + str(value)) # printing the value
-        return value
+        fou_digit_v = '{0:04d}'.format(voltage)
+        num = "3"+str(fou_digit_v)+"\r"
+        print("SENDING:",num)
+        #box.arduino.write(bytes(str(num),'ascii'))
+        for i in num:
+            box.arduino.write(bytes('{}'.format(i),'ascii'))
+        #data = box.arduino.read()
+        data = box.arduino.readline()
+        #box.arduino.reset_input_buffer()
+        #
+        if data != b'':
+            str_ret = bytes.decode(data)
+            print("Recieved:",data," ",len(str_ret)," ",len(data))
+            if(len(str_ret) <= 3):
+                int_ret = int(str_ret)
+                if(int_ret > 0 and int_ret < 1000):
+                    return int_ret
+        return 0
 
     def ESC_RW(self):
         self.prev_pos = self.pos
@@ -70,16 +85,42 @@ box = PC_INTERFACE()
 
 pwm_values = []
 speed_values = []
-x_values = []
+voltage_values = []
 starttime = time.time()
 
-for i in range(99):
-    
-    #set_val = random.randint(0, 99)
-    set_val = i
+nukber = 1
+"""
+while True:
+    num = "3"+str(nukber)+"2"+"\r"
+    #box.arduino.write(bytes(str(num),'ascii'))
+    for i in num:
+        box.arduino.write(bytes('{}'.format(i),'ascii'))
+    #data = box.arduino.read()
+    data = box.arduino.readline()
+    #box.arduino.reset_input_buffer()
+    #
+    if data != b'':
+        print("Recieved:",data)
+        nukber = nukber +1;
+        if nukber >= 10:
+            nukber = 0
+    # 01010001
+    # 01000101
+"""
+value = box.SetVoltage(1)
+time.sleep(0.5)
+value = box.SetVoltage(99)
+time.sleep(0.5)
+value = box.SetVoltage(0)
+time.sleep(2)
+for i in range(0,1023):
+
+    set_val = random.randint(0, 1023)
+    #set_val = i
     value = box.SetVoltage(set_val)
     pwm_values.append(set_val)
-    x_values.append(value)
+    voltage_values.append(int(value))
+
     time.sleep(0.01)
     
 print("starttime",starttime,"DURATION: ",time.time() - starttime)
@@ -87,15 +128,15 @@ fig, ax1 = plt.subplots()
 plt.title("PRS per PWM input")
 ax1.set_xlabel('time') 
 ax1.set_ylabel('PWM', color = 'red') 
-ax1.plot(pwm_values, x_values, color = 'red') 
-ax1.tick_params(axis ='y', labelcolor = 'red') 
+ax1.plot(pwm_values,voltage_values, color = 'red') 
+#ax1.tick_params(axis ='y', labelcolor = 'red') 
   
 # Adding Twin Axes
 
 #ax2 = ax1.twinx() 
   
 #ax2.set_ylabel('RPS', color = 'blue') 
-#ax2.plot(x_values, speed_values, color = 'blue') 
+#ax2.plot(voltage_values, speed_values, color = 'blue') 
 #ax2.tick_params(axis ='y', labelcolor = 'blue') 
  
 # Show plot

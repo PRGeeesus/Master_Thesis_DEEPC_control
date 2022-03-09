@@ -51,6 +51,7 @@ class Controller:
         self.out_constr_ub = np.array([np.inf for i in range(self.output_size)])
         self.in_constr_lb  = np.array([-np.inf for i in range(self.input_size)])
         self.in_constr_ub = np.array([np.inf for i in range(self.input_size)])
+
         self.regularize = True
         self.verbose = False
 
@@ -109,7 +110,7 @@ class Controller:
 
         # these are only needed for Regularization:
         self.g_r = []
-        self.recalculate_g_r()
+        #self.recalculate_g_r()
 
 
         # all the initalization for the SOlver:
@@ -136,10 +137,11 @@ class Controller:
         self.calculate_bounds_u_l()
         self.SolverSettings = {"warm_start" : True,
                                 "adaptive_rho" : True,
-                                "eps_rel": 0.00001,
-                                "eps_abs": 0.00001,
-                                "max_iter": 10000,
-                                "verbose" :self.verbose}
+                                "eps_rel": 0.000001,
+                                "eps_abs": 0.000001,
+                                "polish": True,
+                                "max_iter": 5000,
+                                "verbose" :False}
                                 
         self.prob = osqp.OSQP() #sometimes there is ValueError: Workspace allocation error!
         self.prob.setup(self.P, self.q, self.A, l = self.lb, u = self.ub,**self.SolverSettings) 
@@ -178,9 +180,15 @@ class Controller:
         self.prob.update(Px=self.P.data)
 
     def update_q(self):
+        """
+        needed with new u_r, y_r, Q, R, l_s, l_g
+        """
         self.q = self.calculate_q()
         self.prob.update(q=self.q)
-        
+    
+    def update_l_u(self):
+        self.calculate_bounds_u_l()
+        self.prob.update(l = self.lb,u = self.ub)
 
     def updateIOConstrains(self,input_lb,input_ub,output_lb,output_ub):
         def warning_mesg(in_out,lower_upper):
@@ -207,13 +215,14 @@ class Controller:
 
         Returns
         -------
-        out : matrix q
+        out : matrix P
             Matrix of given shape.
         Notes
         -------
-        [R] [0] [0] \n
-        [0] [Q] [0] \n
-        [0] [0] [l_s * Y_p*Y_p + l_g * I]\n
+      [u, y, g, sigma_y]    [R] [0] [0] [0] \n            [u]           
+                            [0] [Q] [0] [0]\n             [y]
+                            [0] [0] [Il_s + Il_g] [0]\n   [g]
+                            [0] [0] [0] [0]\n             [sigma_y]
 
         -------
         update only if Y_p, lambda_g, lambda_s, Q, R changes
@@ -222,11 +231,10 @@ class Controller:
         P_y = np.kron(np.eye(self.T_f), self.Q) 
         #P_g = self.lambda_s * np.matmul(self.Y_p.T,self.Y_p) + np.eye(self.g_len)*self.lambda_g
         P_g = np.zeros((self.g_len,self.g_len))
-        if self.regularize:
-           P_g = self.lambda_s * np.matmul(self.Y_p.T,self.Y_p)  + np.eye(self.g_len)*self.lambda_g
+        
         #print("P_u shape :",np.shape(P_u))
         #print("P_y shape :",np.shape(P_y))
-        #print("P_g shape :",np.shape(P_g),P_g)
+        #print("P_g shape :",np.shape(P_g))
         #print("x0 shape :",np.shape(x0))
 
         zeros_1_2 = np.zeros((self.T_f*self.input_size, self.T_f*self.output_size))
@@ -237,9 +245,27 @@ class Controller:
 
         zeros_3_1 = np.zeros((self.data_length-self.L, self.T_f*self.input_size))
         zeros_3_2 = np.zeros((self.data_length-self.L, self.T_f*self.output_size))
-        P = np.block([[P_u,zeros_1_2,zeros_1_3],
-                     [zeros_2_1,P_y,zeros_2_3],
-                     [zeros_3_1,zeros_3_2,P_g]])
+        if self.regularize:
+           P_g = np.eye(self.g_len)*self.lambda_g
+           P_sigma_s = self.lambda_s * np.eye(self.T_ini*self.output_size)
+           zeros_sigma_y_1_4 = np.zeros((self.T_f*self.input_size,self.T_ini*self.output_size))   
+           zeros_sigma_y_2_4 = np.zeros((self.T_f*self.output_size,self.T_ini*self.output_size))
+           zeros_sigma_y_3_4 = np.zeros((self.g_len,self.T_ini*self.output_size))
+           zeros_sigma_y_4_4 = np.zeros((self.T_ini*self.output_size,self.T_ini*self.output_size))
+
+           zeros_sigma_y_4_1 = np.zeros((self.T_ini*self.output_size,self.T_f*self.input_size))
+           zeros_sigma_y_4_2 = np.zeros((self.T_ini*self.output_size,self.T_f*self.output_size))
+           zeros_sigma_y_4_3 = np.zeros((self.T_ini*self.output_size,self.g_len))
+           zeros_sigma_y_4_4 = np.zeros((self.T_ini*self.output_size,self.T_ini*self.output_size))
+           P = np.block([[P_u,zeros_1_2,zeros_1_3,zeros_sigma_y_1_4],
+                         [zeros_2_1,P_y,zeros_2_3,zeros_sigma_y_2_4],
+                         [zeros_3_1,zeros_3_2,P_g,zeros_sigma_y_3_4],
+                         [zeros_sigma_y_4_1,zeros_sigma_y_4_2,zeros_sigma_y_4_3,P_sigma_s]])
+           if self.verbose: print("P shape: ",np.shape(P))
+        else:
+            P = np.block([[P_u,zeros_1_2,zeros_1_3],
+                        [zeros_2_1,P_y,zeros_2_3],
+                        [zeros_3_1,zeros_3_2,P_g]])
         P = sparse.csc_matrix(P)
         return P
 
@@ -255,15 +281,16 @@ class Controller:
             ->in update_y_r
             ->in update_in_out_measures
 
-        q = [-2u_r*R ... -2y_r*Q...(-2*l_s*y_ini*Y_p + -2*l_g*gr^T)....]       =  u_r*R*u  +  y_r*Q*y  +  y_ini*Y_p*g - gr*g
+        q = [-2u_r*R ... -2y_r*Q... l_g*I ... l_s*I ]   u    =  u_r*R*u  +  y_r*Q*y  +  l_g*|g|_1 + l_s*|sigma|_1 +
                                                         y
                                                         g
+                                                        sigma
         FOR UREGULARIZED
         q = [-2u_r*R ... -2y_r*Q...0....]               u             =  -u_r*R*u  +  -y_r*Q*y  +  0...
                                                         y
                                                         g
         """
-        factor = -2 #TODO: -2 is the factor form the equation but is it eally needed?
+        factor = -1 #TODO: -2 is the factor form the equation but is it eally needed?
         temp1 = factor*np.matmul(np.array(self.u_r),self.R)
         q_u = temp1
         for i in range(1,self.T_f):
@@ -277,26 +304,25 @@ class Controller:
         #print(np.shape(self.y_ini.flatten().T),np.shape(self.y_ini.flatten()))
         q_g = np.zeros(self.g_len)
         if self.regularize:
-            q_g_first_term = factor*self.lambda_s*np.matmul(self.y_ini.flatten().T,self.Y_p) 
-            q_g_second_term = factor*self.lambda_g*self.g_r.T 
-            q_g = q_g_first_term + q_g_second_term
-        #print("q_u",np.shape(q_u))
-        #print("q_y",np.shape(q_y))
-        #print("q_g_first_term",np.shape(q_g_first_term))
-        #print("q_g_second_term",np.shape(q_g_second_term))
-
+            q_g_first_term = self.lambda_g* np.ones(self.g_len) 
+            q_g_second_term = self.lambda_s*np.ones(self.T_ini*self.output_size) 
+            q_g = np.hstack((q_g_first_term ,q_g_second_term))
+       
         q = np.hstack((q_u,q_y,q_g))
-        #q = np.hstack((q_u,q))
-        #print("q shape: ",np.shape(q))
-        return q
+        self.q = q
+        #if self.verbose and self.regularize:
+            #print("q shape: ",np.shape(q)," q_u: ",np.shape(q_u)," q_y: ",np.shape(q_y)," q_g: ",np.shape(q_g), " q_g_1: ",np.shape(q_g_first_term), " q_g_2: ",np.shape(q_g_second_term))
+        return self.q
 
     def calculate_A(self):
         """
-        0 0 U_p             Up*g        = [u_ini]                 \n
-        -1 0 U_f   u      -u + Uf*g     = [0]                     \n
-        0 -1 Y_f   y   =  -y + Yf*g     = [0]                     \n
-        1 0 0      g      u             < [u_upper]   > [u_lower] \n
-        0 1 0               y           < [y_upper]   > [y_lower] \n
+        0 0 U_p  0            Up*g        = [u_ini]                 \n
+        0 0 Y_p -1           Yp*g -sig    = [y_ini]                 \n
+        -1 0 U_f 0  u      -u + Uf*g      = [0]                     \n
+        0 -1 Y_f 0  y   =  -y + Yf*g      = [0]                     \n
+        1 0 0    0  g          u          < [u_upper]   > [u_lower] \n
+        0 1 0    0  sig        y          < [y_upper]   > [y_lower] \n
+        0 0 0    1      =      sigma      < inf         > 0
         ----- ----- ----- ----- ----- ----- ----- -----
         \n
             A       x        l/u                                \n
@@ -315,6 +341,9 @@ class Controller:
         u_ZEROS_1_1 = np.zeros((self.input_size*self.T_ini,self.input_size*self.T_f))
         y_ZEROS_1_2 = np.zeros((self.input_size*self.T_ini,self.output_size*self.T_f))
 
+        u_ZEROS_1_1_a = np.zeros((self.output_size*self.T_ini,self.input_size*self.T_f))
+        y_ZEROS_1_2_b = np.zeros((self.output_size*self.T_ini,self.output_size*self.T_f))
+
         u_factor_2_1 = np.eye(self.input_size*self.T_f)*-1.0
         u_ZEROS_2_2 = np.zeros((self.input_size*self.T_f,self.output_size*self.T_f))
 
@@ -322,10 +351,10 @@ class Controller:
         y_factor_3_2 = np.eye(self.output_size*self.T_f)*-1.0
 
         u_boundaries_4_1 = np.eye(self.input_size*self.T_f)
-        u_bouds_zeros_4_2 = np.zeros((self.input_size*self.T_f,self.input_size*self.T_f))
+        u_bouds_zeros_4_2 = np.zeros((self.input_size*self.T_f,self.output_size*self.T_f))
 
         y_boundaries_5_2 = np.eye(self.output_size*self.T_f)
-        y_bouds_zeros_5_1 = np.zeros((self.output_size*self.T_f,self.output_size*self.T_f))
+        y_bouds_zeros_5_1 = np.zeros((self.output_size*self.T_f,self.input_size*self.T_f))
 
         ZEROS_4_3 = np.zeros((self.input_size*self.T_f,(self.data_length - self.L)))
         ZEROS_5_3 = np.zeros((self.output_size*self.T_f,(self.data_length - self.L)))
@@ -334,11 +363,25 @@ class Controller:
         #print(np.shape(u_factor_2_1),np.shape(u_ZEROS_2_2),np.shape(self.U_f))
         #print(np.shape(y_ZEROS_3_1),np.shape(y_factor_3_2),np.shape(self.Y_f))
         if self.regularize:
-            A = np.block([[u_ZEROS_1_1,y_ZEROS_1_2,self.U_p],
-                        [u_factor_2_1,u_ZEROS_2_2,self.U_f],
-                        [y_ZEROS_3_1,y_factor_3_2,self.Y_f],
-                        [u_boundaries_4_1,u_bouds_zeros_4_2,ZEROS_4_3],
-                        [y_bouds_zeros_5_1,y_boundaries_5_2,ZEROS_5_3]])
+            zeros_1_4 = np.zeros((self.input_size*self.T_ini,self.output_size*self.T_ini))
+            sigma_2_4 = -1*np.ones((self.output_size*self.T_ini,self.output_size*self.T_ini))
+            zeros_3_4 = np.zeros((self.input_size*self.T_f,self.output_size*self.T_ini))
+            zeros_4_4 = np.zeros((self.output_size*self.T_f,self.output_size*self.T_ini))
+            zeros_5_4 = np.zeros((self.input_size*self.T_f,self.output_size*self.T_ini))
+            zeros_6_4 = np.zeros((self.output_size*self.T_f,self.output_size*self.T_ini))
+
+            zeros_7_1 =       np.zeros((self.output_size*self.T_ini,self.input_size*self.T_f))
+            zeros_7_2 =       np.zeros((self.output_size*self.T_ini,self.output_size*self.T_f))
+            zeros_7_3 =       np.zeros((self.output_size*self.T_ini,self.g_len))
+            zeros_7_4_sigma = np.ones((self.output_size*self.T_ini,self.output_size*self.T_ini))
+            
+            A = np.block([[u_ZEROS_1_1,y_ZEROS_1_2,self.U_p,zeros_1_4],
+                          [u_ZEROS_1_1_a,y_ZEROS_1_2_b,self.Y_p,sigma_2_4],
+                        [u_factor_2_1,u_ZEROS_2_2,self.U_f,zeros_3_4],
+                        [y_ZEROS_3_1,y_factor_3_2,self.Y_f,zeros_4_4],
+                        [u_boundaries_4_1,u_bouds_zeros_4_2,ZEROS_4_3,zeros_5_4],
+                        [y_bouds_zeros_5_1,y_boundaries_5_2,ZEROS_5_3,zeros_6_4],
+                        [zeros_7_1,zeros_7_2,zeros_7_3,zeros_7_4_sigma]])
         else:
             #second line -> adds Y_p
             A = np.block([[u_ZEROS_1_1,y_ZEROS_1_2,self.U_p],
@@ -378,23 +421,18 @@ class Controller:
         ub_y = ub_y_temp
         for i in range(self.T_f-1):
             ub_y = np.vstack((ub_y_temp,ub_y))
-
-        #lb_y = lb_y.flatten()
-        #lb_u = lb_u.flatten()
-        #print(np.shape(ub_y),np.shape(ub_u))
-        #ub_y = ub_y.flatten()
-        #ub_u = ub_u.flatten()
-        #print(np.shape(ub_y),np.shape(ub_u))
         
+        
+        self.sigma_constr_lb = np.array([0.0 for i in range(self.output_size * self.T_ini)])
+        self.sigma_constr_lb = np.reshape(self.sigma_constr_lb,(len(self.sigma_constr_lb),1))
+        self.sigma_constr_ub = np.array([np.inf for i in range(self.output_size * self.T_ini)])
+        self.sigma_constr_ub = np.reshape(self.sigma_constr_ub,(len(self.sigma_constr_ub),1))
+
         u_ini_flat = np.reshape(self.u_ini,(self.input_size*self.T_ini,1))
         y_ini_flat = np.reshape(self.y_ini,(self.output_size*self.T_ini,1))
-
-        if self.regularize:
-            lb = np.vstack((u_ini_flat,u_zeros,y_zeros,lb_u,lb_y))
-            ub = np.vstack((u_ini_flat,u_zeros,y_zeros,ub_u,ub_y))
-        else:
-            lb = np.vstack((u_ini_flat,y_ini_flat,u_zeros,y_zeros,lb_u,lb_y))
-            ub = np.vstack((u_ini_flat,y_ini_flat,u_zeros,y_zeros,ub_u,ub_y))
+        
+        lb = np.vstack((u_ini_flat,y_ini_flat,u_zeros,y_zeros,lb_u,lb_y,self.sigma_constr_lb))
+        ub = np.vstack((u_ini_flat,y_ini_flat,u_zeros,y_zeros,ub_u,ub_y,self.sigma_constr_ub))
         
         self.ub = ub
         self.lb = lb
@@ -414,9 +452,13 @@ class Controller:
         y_star = same as y but calculated by Y_f x g  \n
         g = the 'learned' state weights               \n
         """
-        x0_result = self.solve_for_x_regularized()
+        res = self.solve_for_x_regularized()
+        x0_result = res.x
+        if not any(x0_result): raise Exception("Problem could not be solved: status: ", res.info.status) 
         #x0_result = self.opt_solve_for_x()
-        g = x0_result[self.T_f*self.input_size + self.T_f*self.output_size : ]
+        g = x0_result[self.T_f*self.input_size + self.T_f*self.output_size : self.T_f*self.input_size + self.T_f*self.output_size + self.g_len ]
+        sigma_y = x0_result[-self.T_ini*self.output_size:]
+        #print("sigma: ",sigma_y)
         self.g = g
         u = x0_result[:self.T_f*self.input_size]
         u_star = np.reshape(np.matmul(self.U_f,g),(self.T_f,self.input_size))
@@ -435,7 +477,7 @@ class Controller:
 
     def solve_for_x_regularized(self):
         res = self.prob.solve()
-        return res.x
+        return res
 
     def updateReferenceWaypoint(self,new_y_r):
         """
@@ -448,9 +490,9 @@ class Controller:
         None
         """
         if len(new_y_r) != self.output_size:
-            print("Wrong size for reference point. Must be: ",self.output_size,"\n")
+            raise Exception("Wrong size for reference point. Must be: ",self.output_size)
         self.y_r = new_y_r
-        self.recalculate_g_r
+        #self.recalculate_g_r
         self.update_q()
     
     def updateReferenceInput(self,new_u_r):
@@ -464,9 +506,9 @@ class Controller:
         None
         """
         if len(new_u_r) != self.input_size:
-            print("Wrong size for reference point. Must be: ",self.output_size,"\n")
+            raise Exception("Wrong size for reference point. Must be: ",self.input_size)
         self.u_r = new_u_r
-        self.recalculate_g_r #because it uses u_r
+        #self.recalculate_g_r #because it uses u_r
         self.update_q()
     
     def updateControlCost_R(self,new_R):
@@ -533,7 +575,7 @@ class Controller:
         
         self.g_r = np.matmul(self.g_r,temp.flatten())
         
-    def updateIn_Out_Measures(self,new_input_measure,new_output_measures,verbose = False):
+    def updateIn_Out_Measures(self,new_input_measure,new_output_measures):
         """
         Will Update Inout and output measses. that is u_ini and y_ini.
         Inputs:
@@ -546,14 +588,9 @@ class Controller:
         None
         """
         if(len(new_input_measure) != self.input_size or len(new_output_measures) != self.output_size):
-            print("Trying to update with wrong array sizes")
-        
-        if verbose == True:
-            inp = [round(i,2) for i in new_input_measure]
-            inp = [round(i,2) for i in new_input_measure]
-            outp = [round(i,2) for i in new_output_measures]
-
-            print("Updating in: ",inp," out: ",outp)
+            raise Exception("Trying to update with wrong array sizes: input measurment length: ",
+                        len(new_input_measure)," but should be",self.input_size,
+            "output measurment length: ",len(new_output_measures)," should be: ",self.output_size) 
 
         #self.u_ini = np.vstack((new_input_measure,self.u_ini))
         #self.y_ini = np.vstack((new_output_measures,self.y_ini))
@@ -568,9 +605,16 @@ class Controller:
             self.y_ini =self.y_ini[len(self.y_ini)-self.T_ini:] 
         # if y_ini is filled, only then update q, as it requires y_ini to be T_ini long
         # if this is not checked then you can not initalize y_ini with this function in the beginning
+
         if len(self.y_ini) == self.T_ini:
             self.update_q()
-            if verbose == True: print("Updating q")
+            self.update_l_u()
+            if self.verbose: print(" Updating q l and u")
+
+        if self.verbose == True:
+            inp = [round(i,2) for i in new_input_measure]
+            outp = [round(i,2) for i in new_output_measures]
+            print("Updating : in: ",inp," out: ",outp, "y_ini len: ",len(self.y_ini)," should be: ",self.T_ini," y_ini: ",self.y_ini)
 
     def generateHankel_Collums(self,L,data_sequence):
         """
@@ -603,9 +647,9 @@ class Controller:
     def _Init_u_y_ini(self):
         """
         Use only in __init__()
-        It is called in __init__() and does not have to called manually
+        It is called in __init__() and does not have to be called manually
         sets u_ini and y_ini the last elements of input_sequence and output_sequence
-        This has to be done when the controller is initalized, but no recent system data is available.
+        This has to be done when the controller is initalized, but no recent system data is yet available.
 
         """
         for i in range(self.T_ini-1):

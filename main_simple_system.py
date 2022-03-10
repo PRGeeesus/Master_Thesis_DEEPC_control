@@ -1182,7 +1182,7 @@ def PendulumWithCart_Animated():
         x += 1
 
 def BLDC_MOTOR_CONTROL():
-    M = BLDC_MOTOR.PC_INTERFACE()
+    M = BLDC_MOTOR.PC_INTERFACE(port='COM4')
     M.verbose = True
     M.SetMotorStill()
     time.sleep(1)
@@ -1348,10 +1348,17 @@ def AirFlow():
     #print("len data:", len(data)," data: ",data,"shape: ",np.shape(data))
     # lambda_s":100000,
     # lambda_g":1000000
+<<<<<<< Updated upstream
     T_ini   =  2
     T_f     = 60
     settings = {"lambda_s":1000000,
                 "lambda_g":50000000,
+=======
+    T_ini = 3
+    T_f = 15
+    settings = {"lambda_s":100000,
+                "lambda_g":1000000,
+>>>>>>> Stashed changes
                 "out_constr_lb":[0],
                 "out_constr_ub":[1000],
                 "in_constr_lb":[10],
@@ -1414,7 +1421,11 @@ def AirFlow():
 
         # user output:
         print(i,": in: ",round(applied_input), " out: ", round(system_output), " prediction: ",round(prediction))
+<<<<<<< Updated upstream
         #time.sleep(0.001)
+=======
+        time.sleep(0.01)
+>>>>>>> Stashed changes
     
 
     #track_mean,track_std = SimpleSystems.Evaluate_Tracking_Accuarcy(system_outputs,predictions_y)
@@ -1453,6 +1464,16 @@ def AirFlow():
     SimpleSystems.saveAsCSV(data_name, recorings)
 
     plt.show()
+
+def BOX_TEST():
+    box = PC_INTERFACE()
+    while(True):
+        value = box.SetVoltage(1)
+        print(1,value)
+        time.sleep(0.5)
+        value = box.SetVoltage(1023)
+        print(1023,value)
+        time.sleep(0.5)
 
 def scientific(x, pos):
     # x:  tick value - ie. what you currently see in yticks
@@ -1496,6 +1517,7 @@ def BOX_SHOW_OUTPUT_CURVE():
 #FederMasse(1,1,1,3)
 #BOX_SHOW_OUTPUT_CURVE()
 AirFlow()
+#BOX_TEST()
 #SMDSystem_scout_lg_ls()
 #SMDSystem_scout_Q_R()
 #main2()

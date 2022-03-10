@@ -137,7 +137,7 @@ class Controller:
         self.calculate_bounds_u_l()
         self.SolverSettings = {"warm_start" : True,
                                 "adaptive_rho" : True,
-                                "eps_rel": 0.0000001,
+                                "eps_rel": 0.000001,
                                 "eps_abs": 0.000001,
                                 "polish": True,
                                 "max_iter": 5000,

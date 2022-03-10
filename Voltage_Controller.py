@@ -8,13 +8,13 @@ import matplotlib.animation as animation
 from matplotlib import style
 
 class PC_INTERFACE():
-    def __init__(self,port ='COM5',baudrate=19200,timeout=.000001,parity=serial.PARITY_NONE,stopbits=serial.STOPBITS_ONE,bytesize=serial.EIGHTBITS):
+    def __init__(self,port ='COM3',baudrate=19200,timeout=.000001,parity=serial.PARITY_NONE,stopbits=serial.STOPBITS_ONE,bytesize=serial.EIGHTBITS):
         self.port = port
         self.baudrate = baudrate
         self.timeout = timeout
         self.arduino = serial.Serial(port = self.port, baudrate = self.baudrate,timeout = self.timeout)
         #self.arduino = serial.Serial(port = self.port, baudrate = self.baudrate)
-        time.sleep(3)
+        time.sleep(1)
         print("Connection Estabished")
         self.verbose = True
         self.escs_pwm = 1200
@@ -63,7 +63,7 @@ class PC_INTERFACE():
                 int_ret = int(str_ret)
                 if(int_ret > 0 and int_ret < 1000):
                     return int_ret
-        return 0
+        return None
 
     def ESC_RW(self):
         self.prev_pos = self.pos

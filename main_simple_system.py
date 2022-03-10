@@ -14,6 +14,9 @@ from mpl_toolkits.mplot3d.axes3d import Axes3D
 import matplotlib
 
 import random
+
+from scipy import rand
+from torch import hstack
 import DeePC_OSQP as DeePC
 import numpy as np
 import SimpleSystems
@@ -1288,12 +1291,7 @@ def BLDC_MOTOR_CONTROL():
 
 def AirFlow():
     box = PC_INTERFACE()
-    value = box.SetVoltage(1)
-    time.sleep(0.5)
-    value = box.SetVoltage(1023)
-    time.sleep(0.5)
     value = box.SetVoltage(0)
-    time.sleep(2)
     
     timesteps = 1
     sim_time = 300
@@ -1306,8 +1304,7 @@ def AirFlow():
     for i in range(int(round(sim_time/timesteps))):
         
         if i > 200:
-            if i%30 == 0:
-                input_Voltage = random.random()*1023
+                input_Voltage = 400
         if i <= 200:
             input_Voltage = i
 
@@ -1320,9 +1317,10 @@ def AirFlow():
     data = np.hstack([np.reshape(recording_inputs,(len(recording_inputs),1)),
                       np.reshape(recording_outputs,(len(recording_outputs),1))])
     """
-    data_name = "Voltage_to_pressure_200"
+    data_name = "VERUSCHSDATEN_RT_LABOR_1"
     #SimpleSystems.saveAsCSV(data_name, data)
     data = SimpleSystems.readFromCSV(data_name)
+    data = data[50:]
 
     """
     ### PLOTTING COLLECTED DATA
@@ -1351,12 +1349,12 @@ def AirFlow():
     # lambda_s":100000,
     # lambda_g":1000000
     T_ini   =  2
-    T_f     = 15
-    settings = {"lambda_s":100000,
-                "lambda_g":1000000,
+    T_f     = 60
+    settings = {"lambda_s":1000000,
+                "lambda_g":50000000,
                 "out_constr_lb":[0],
                 "out_constr_ub":[1000],
-                "in_constr_lb":[1],
+                "in_constr_lb":[10],
                 "in_constr_ub":[1023],
                 "regularize":True,
                 "verbose":False}
@@ -1364,10 +1362,10 @@ def AirFlow():
 
     # Set up the Controller
     ctrl = DeePC.Controller(data,T_ini,T_f,1,1,**settings)
-    SOLLWERT = 400
+    SOLLWERT = 10
     ctrl.updateReferenceWaypoint([SOLLWERT])
-    ctrl.updateTrackingCost_Q([[300]])
-    ctrl.updateControlCost_R([[1]])
+    ctrl.updateTrackingCost_Q([[40000]])
+    ctrl.updateControlCost_R([[0.1]])
 
     predictions_y = [0]
     applied_inputs = [0]
@@ -1378,24 +1376,34 @@ def AirFlow():
     #pid = PID(1, 1, 0.1, setpoint=SOLLWERT)
     #pid.output_limits = (0, 1024)
     #pid.sample_time = 0.1
-    #system_output = 0
-
+    system_output = 0
+    prev_output = 0
     Control_input = 0
     prediction = 0
     u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
-    for i in range(0,200):
+    for i in range(0,1000):
         timeline.append(i)
         if i > T_f +3:
             u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
             Control_input = u[0][0]
             prediction = y_star[0][0]
         
-
+        if i == 250:
+            SOLLWERT = 300
+            ctrl.updateReferenceWaypoint([SOLLWERT])
+        """
+        if i == 400:
+            SOLLWERT = 800
+            ctrl.updateReferenceWaypoint([SOLLWERT])
+        """
         #Control_input = pid(system_output)
         
 
         applied_input = Control_input
+        prev_output = system_output
         system_output = box.SetVoltage(applied_input)
+        if system_output == None:
+            system_output = prev_output
         # record:
         soll.append(SOLLWERT)
         predictions_y.append(prediction)
@@ -1405,13 +1413,15 @@ def AirFlow():
         ctrl.updateIn_Out_Measures([applied_input],[system_output])
 
         # user output:
-        print(i,": in: ",applied_input, " out: ", system_output, " prediction: ",prediction)
-        time.sleep(0.01)
+        print(i,": in: ",round(applied_input), " out: ", round(system_output), " prediction: ",round(prediction))
+        #time.sleep(0.001)
     
 
     #track_mean,track_std = SimpleSystems.Evaluate_Tracking_Accuarcy(system_outputs,predictions_y)
     #control_mean,control_std = SimpleSystems.Evaluate_Control_Accuarcy(soll,system_outputs)
     #if scout: return track_mean,control_mean
+
+    value = box.SetVoltage(0)
 
     fig, ax1 = plt.subplots()
     titlesting = "DeePC control"
@@ -1422,7 +1432,7 @@ def AirFlow():
     ax1.plot(timeline,soll,label='set point',c="y")
     ax1.plot(timeline,predictions_y,label='predictions',c="r")
     ax1.plot(timeline,system_outputs,label="system behaviour",c="g")
-    plt.legend(loc='upper right')
+    plt.legend(loc='lower right')
 
     # PLOT ON RIGHT AXIS
     ax2 = ax1.twinx()
@@ -1430,7 +1440,17 @@ def AirFlow():
     ax2.plot(timeline,applied_inputs,label="applied inputs",c="b")
     #ax2.plot(data[:,0],label='Init inputs')
     #ax2.set_ylim([-7, 7])
-    plt.legend(loc='right')
+    plt.legend(loc='lower center')
+
+
+    recorings = np.hstack([np.reshape(timeline,(len(timeline),1)),
+                        np.reshape(soll,(len(soll),1)),
+                        np.reshape(predictions_y,(len(predictions_y),1)),
+                        np.reshape(applied_inputs,(len(applied_inputs),1)),
+                        np.reshape(system_outputs,(len(system_outputs),1))])
+    data_name = "VERUSCHSDATEN_RT_LABOR_EINFACHE_REGELUNG_AUF_SOLLWERT_mit_störung"
+    print("SAVING AS: ",data_name)
+    SimpleSystems.saveAsCSV(data_name, recorings)
 
     plt.show()
 
@@ -1446,7 +1466,7 @@ def BOX_SHOW_OUTPUT_CURVE():
     box = PC_INTERFACE()
     value = box.SetVoltage(1)
     time.sleep(0.5)
-    for i in range(0,150):
+    for i in range(0,1000):
         set_val = i
         value = box.SetVoltage(set_val)
         pwm_values.append(set_val)
@@ -1474,6 +1494,7 @@ def BOX_SHOW_OUTPUT_CURVE():
 #ISystem_scout_Q_R()
 
 #FederMasse(1,1,1,3)
+#BOX_SHOW_OUTPUT_CURVE()
 AirFlow()
 #SMDSystem_scout_lg_ls()
 #SMDSystem_scout_Q_R()

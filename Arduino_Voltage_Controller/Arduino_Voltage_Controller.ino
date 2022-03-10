@@ -150,8 +150,9 @@ void loop() {
       if(string[0] == '3')
       {
       int val = (string[1]-48)*1000 + (string[2]-48)*100 + (string[3]-48)*10 + (string[4]-48);
-      if(val >= 0 && val < 1023)
+      if(val >= 0 && val < 1030)
         {
+          if(val > 1023){val = 1023;}
           //Timer1.pwm(motorPin1, (val/ 100.0) * 1023);
           Timer1.pwm(motorPin1, val);
           adc0 = ads.getLastConversionResults();

@@ -1350,10 +1350,10 @@ def AirFlow():
     #print("len data:", len(data)," data: ",data,"shape: ",np.shape(data))
     # lambda_s":100000,
     # lambda_g":1000000
-    T_ini = 5
-    T_f = 15
+    T_ini   =  2
+    T_f     = 15
     settings = {"lambda_s":100000,
-                "lambda_g":2000000,
+                "lambda_g":1000000,
                 "out_constr_lb":[0],
                 "out_constr_ub":[1000],
                 "in_constr_lb":[1],
@@ -1361,11 +1361,12 @@ def AirFlow():
                 "regularize":True,
                 "verbose":False}
 
+
     # Set up the Controller
     ctrl = DeePC.Controller(data,T_ini,T_f,1,1,**settings)
     SOLLWERT = 400
     ctrl.updateReferenceWaypoint([SOLLWERT])
-    ctrl.updateTrackingCost_Q([[100]])
+    ctrl.updateTrackingCost_Q([[300]])
     ctrl.updateControlCost_R([[1]])
 
     predictions_y = [0]
@@ -1373,9 +1374,12 @@ def AirFlow():
     system_outputs = [0]
     soll = [SOLLWERT]
     timeline = [0]
-    #pid = PID(0.9, 10, 0.1, setpoint=SOLLWERT)
-    #pid.output_limits = (-5.0, 5.0)
-    #pid.sample_time = 0.005
+    ##for PID CONTROL
+    #pid = PID(1, 1, 0.1, setpoint=SOLLWERT)
+    #pid.output_limits = (0, 1024)
+    #pid.sample_time = 0.1
+    #system_output = 0
+
     Control_input = 0
     prediction = 0
     u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
@@ -1384,12 +1388,14 @@ def AirFlow():
         if i > T_f +3:
             u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
             Control_input = u[0][0]
-            prediction = y_star[0][0]      
+            prediction = y_star[0][0]
+        
 
+        #Control_input = pid(system_output)
         
 
         applied_input = Control_input
-        system_output = value = box.SetVoltage(applied_input)
+        system_output = box.SetVoltage(applied_input)
         # record:
         soll.append(SOLLWERT)
         predictions_y.append(prediction)
@@ -1432,6 +1438,32 @@ def scientific(x, pos):
     # x:  tick value - ie. what you currently see in yticks
     # pos: a position - ie. the index of the tick (from 0 to 9 in this example)
     return '%.1E' % x
+
+def BOX_SHOW_OUTPUT_CURVE():
+    pwm_values = []
+    speed_values = []
+    voltage_values = []
+    box = PC_INTERFACE()
+    value = box.SetVoltage(1)
+    time.sleep(0.5)
+    for i in range(0,150):
+        set_val = i
+        value = box.SetVoltage(set_val)
+        pwm_values.append(set_val)
+        voltage_values.append(int(value))
+
+        time.sleep(0.1)
+
+    fig, ax1 = plt.subplots() 
+    plt.title("PRS per PWM input")
+    ax1.set_xlabel('PWM value') 
+    ax1.set_ylabel('Voltage', color = 'red') 
+    ax1.plot(pwm_values,voltage_values, color = 'red') 
+
+
+    plt.show()
+    
+
 
 #main5()
 #main3()

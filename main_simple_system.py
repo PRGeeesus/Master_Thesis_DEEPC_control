@@ -1348,17 +1348,10 @@ def AirFlow():
     #print("len data:", len(data)," data: ",data,"shape: ",np.shape(data))
     # lambda_s":100000,
     # lambda_g":1000000
-<<<<<<< Updated upstream
     T_ini   =  2
     T_f     = 60
     settings = {"lambda_s":1000000,
                 "lambda_g":50000000,
-=======
-    T_ini = 3
-    T_f = 15
-    settings = {"lambda_s":100000,
-                "lambda_g":1000000,
->>>>>>> Stashed changes
                 "out_constr_lb":[0],
                 "out_constr_ub":[1000],
                 "in_constr_lb":[10],
@@ -1421,11 +1414,7 @@ def AirFlow():
 
         # user output:
         print(i,": in: ",round(applied_input), " out: ", round(system_output), " prediction: ",round(prediction))
-<<<<<<< Updated upstream
-        #time.sleep(0.001)
-=======
         time.sleep(0.01)
->>>>>>> Stashed changes
     
 
     #track_mean,track_std = SimpleSystems.Evaluate_Tracking_Accuarcy(system_outputs,predictions_y)

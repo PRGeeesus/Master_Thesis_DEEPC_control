@@ -1349,9 +1349,9 @@ def AirFlow():
     # lambda_s":100000,
     # lambda_g":1000000
     T_ini   =  2
-    T_f     = 60
-    settings = {"lambda_s":1000000,
-                "lambda_g":50000000,
+    T_f     = 15
+    settings = {"lambda_s":100000,
+                "lambda_g":1000000,
                 "out_constr_lb":[0],
                 "out_constr_ub":[1000],
                 "in_constr_lb":[10],
@@ -1364,7 +1364,7 @@ def AirFlow():
     ctrl = DeePC.Controller(data,T_ini,T_f,1,1,**settings)
     SOLLWERT = 10
     ctrl.updateReferenceWaypoint([SOLLWERT])
-    ctrl.updateTrackingCost_Q([[40000]])
+    ctrl.updateTrackingCost_Q([[3000]])
     ctrl.updateControlCost_R([[0.1]])
 
     predictions_y = [0]
@@ -1448,9 +1448,10 @@ def AirFlow():
                         np.reshape(predictions_y,(len(predictions_y),1)),
                         np.reshape(applied_inputs,(len(applied_inputs),1)),
                         np.reshape(system_outputs,(len(system_outputs),1))])
-    data_name = "VERUSCHSDATEN_RT_LABOR_EINFACHE_REGELUNG_AUF_SOLLWERT_mit_störung"
-    print("SAVING AS: ",data_name)
-    SimpleSystems.saveAsCSV(data_name, recorings)
+
+    #data_name = "VERUSCHSDATEN_RT_LABOR_EINFACHE_REGELUNG_AUF_SOLLWERT_mit_störung"
+    #print("SAVING AS: ",data_name)
+    #SimpleSystems.saveAsCSV(data_name, recorings)
 
     plt.show()
 

@@ -1446,13 +1446,13 @@ def BOX_SHOW_OUTPUT_CURVE():
     box = PC_INTERFACE()
     value = box.SetVoltage(1)
     time.sleep(0.5)
-    for i in range(0,150):
+    for i in range(0,1023):
         set_val = i
         value = box.SetVoltage(set_val)
         pwm_values.append(set_val)
         voltage_values.append(int(value))
 
-        time.sleep(0.1)
+        #time.sleep(0.1)
 
     fig, ax1 = plt.subplots() 
     plt.title("PRS per PWM input")
@@ -1474,6 +1474,7 @@ def BOX_SHOW_OUTPUT_CURVE():
 #ISystem_scout_Q_R()
 
 #FederMasse(1,1,1,3)
+#BOX_SHOW_OUTPUT_CURVE()
 AirFlow()
 #SMDSystem_scout_lg_ls()
 #SMDSystem_scout_Q_R()

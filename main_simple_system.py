@@ -10,13 +10,14 @@
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 import matplotlib.ticker as mtick
-from mpl_toolkits.mplot3d.axes3d import Axes3D
+
 import matplotlib
+from matplotlib.ticker import (MultipleLocator, AutoMinorLocator)
 
 import random
 
 from scipy import rand
-from torch import hstack
+#from torch import hstack
 import DeePC_OSQP as DeePC
 import numpy as np
 import SimpleSystems
@@ -134,21 +135,34 @@ def ISystem_1(l_s,l_g,Q,R,scout = False):
     if scout: return track_mean,control_mean
     
     fig, ax1 = plt.subplots()
-    titlesting = "I System DEEPC Controlled to" + str(SOLLWERT)
-    plt.title(titlesting)
-    ax1.set_ylabel("Outputs")
-    ax1.set_xlabel("time")
+    #grid
+    ax1.grid(which='both')
+    ax1.grid(which='minor', alpha=0.2, linestyle='--')
+
+    title_string = "I System - DeePC Control"
+
     #ax1.plot(original_data,label='Init Data')
-    ax1.plot(soll,label='setpoint',c="y")
+    ax1.plot(soll,label='set-point',c="y")
     ax1.plot(predictions_y,label='prediction',c="r")
     ax1.plot(outputs2,label="system behaviour",c="g")
-    
+
+    plt.title(title_string,fontsize = 16)
+
+    ax1.set_ylabel("Output",fontsize = 16)
+    ax1.set_xlabel("Ticks [#]",fontsize = 16)
+    ax1.yaxis.set_major_locator(MultipleLocator(1))
+    ax1.yaxis.set_minor_locator(MultipleLocator(0.2))
+    ax1.xaxis.set_major_locator(MultipleLocator(10))
+    ax1.xaxis.set_minor_locator(MultipleLocator(5))
+
     plt.legend(loc=8)
     # ...
     ax2 = ax1.twinx()
-    ax2.set_ylabel("Inputs")
+    ax2.set_ylabel("Input",fontsize = 16)
     ax2.plot(applied_inputs,label="applied inputs",c="b")
     ax2.set_ylim([-2, 2])
+    ax2.yaxis.set_major_locator(MultipleLocator(1))
+    ax2.yaxis.set_minor_locator(MultipleLocator(0.2))
 
     plt.legend(loc=4)
     plt.show()
@@ -248,7 +262,7 @@ def ISystem_scout_Q_R():
     
     #ls_range = range(1,ls_scale,ls_factor)
     Q  = [10**i for i in range(1,8)]
-    R  = [i for i in range(1,100,10)]
+    R  = [i for i in range(1,50,10)]
     
     for i in R:
         temp1 = []
@@ -778,7 +792,7 @@ def FederMasse(l_s,l_g,Q,R,scout = False):
     input_force = 5.0
     sys = FederMasseSystem(timesteps)
     timeline = []
-    
+    """
     for i in range(round(sim_time/timesteps)):
         if i == 30:
             input_force = random.random()*5
@@ -790,11 +804,11 @@ def FederMasse(l_s,l_g,Q,R,scout = False):
 
     inputs = sys.in_force
     x_out = sys.out_pos
-    data = np.hstack([np.reshape(inputs,(len(inputs),1)),np.reshape(x_out,(len(x_out),1))])
-    
-    # SimpleSystems.saveAsCSV("Feder_Masse_"+str(len(data2)), data2)
-    #data = SimpleSystems.readFromCSV("Feder_Masse_101")
-    #data = data[:300]
+    data2 = np.hstack([np.reshape(inputs,(len(inputs),1)),np.reshape(x_out,(len(x_out),1))])
+    """
+    #SimpleSystems.saveAsCSV("Feder_Masse_"+str(len(data2)), data2)
+    data = SimpleSystems.readFromCSV("Feder_Masse_200")
+    data = data[1:]
     """
     ### PLOTTING COLLECTED DATA
     fig, ax1 = plt.subplots()
@@ -817,8 +831,8 @@ def FederMasse(l_s,l_g,Q,R,scout = False):
     """
     #### DEEPC PREDICTION PART
     print("len data:", len(data))
-    T_ini = 4
-    T_f = 15
+    T_ini = 3
+    T_f = 10
     settings = {"lambda_s":l_s,
                 "lambda_g":l_g,
                 "out_constr_lb":[-np.inf],
@@ -846,6 +860,7 @@ def FederMasse(l_s,l_g,Q,R,scout = False):
     x_range_prediction_2 = [i for i in range(T_f+one_time_offset*2,T_f+T_f+one_time_offset*2)]
     x_range_prediction_3 = [i for i in range(T_f+one_time_offset*3,T_f+T_f+one_time_offset*3)]
     applied_inputs = []
+    system_outputs = []
     soll = [SOLLWERT]
     timeline = [0]
     #pid = PID(0.9, 10, 0.1, setpoint=SOLLWERT)
@@ -854,30 +869,52 @@ def FederMasse(l_s,l_g,Q,R,scout = False):
     Control_input = 0
     prediction = 0
     u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
-    for i in range(0,200): 
-        if i == 100:
-            SOLLWERT = -5
-            ctrl.updateReferenceWaypoint([SOLLWERT])
+
+    for i in range(0,1000): 
+        #if i == 60:
+        #    SOLLWERT = -5
+        #    ctrl.updateReferenceWaypoint([SOLLWERT])
         #     #pid.setpoint = SOLLWERT
         timeline.append(i)
         if i > T_f +3:
             u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
             Control_input = u[0][0]
             prediction = y_star[0][0]
-        if i == T_f + one_time_offset*1:
-            prediction_1 = y_star[:,0]
-        if i == T_f + one_time_offset*2:
-            prediction_2 = y_star[:,0]
-        if i == T_f + one_time_offset*3:
-            prediction_3 = y_star[:,0]
-        
-
+        #if i == T_f + one_time_offset*1:
+        #    prediction_1 = y_star[:,0]
+        #if i == T_f + one_time_offset*2:
+        #    prediction_2 = y_star[:,0]
+        #if i == T_f + one_time_offset*3:
+        #    prediction_3 = y_star[:,0]
+        if i%250 == 0 :
+            SOLLWERT = SOLLWERT*-1
+            ctrl.updateReferenceWaypoint([SOLLWERT])
+        if i == 200:
+            sys.m = 80
+            sys.k = 1
+            sys.changeSystem()
+        if i == 550:
+            data_length = 400
+            new_data = np.hstack([np.reshape(applied_inputs[len(applied_inputs)-data_length:],(len(applied_inputs[len(applied_inputs)-data_length:]),1)),
+                                  np.reshape(system_outputs[len(system_outputs)-data_length:],(len(system_outputs[len(system_outputs)-data_length:]),1))])
+            
+            print("new_data",len(new_data),np.shape(new_data))
+            ctrl = DeePC.Controller(new_data,T_ini,T_f,1,1,**settings)
+            ctrl.updateReferenceWaypoint([SOLLWERT])
+            #ctrl.updateReferenceInput([0.5])
+            ctrl.updateTrackingCost_Q([[Q]])
+            ctrl.updateControlCost_R([[R]])
+        if i > 550 and i < 570:
+            Control_input =  applied_inputs[-1]
+            prediction = predictions_y[-1]
 
         #print(u,u_star)
         #control = pid(sys.out_pos[-1])
         soll.append(SOLLWERT)
         applied_input = Control_input
         system_output = sys.OneTick(applied_input)
+        system_outputs.append(system_output)
+
         predictions_y.append(prediction)
         applied_inputs.append(applied_input)
         ctrl.updateIn_Out_Measures([applied_input],[system_output])
@@ -893,30 +930,46 @@ def FederMasse(l_s,l_g,Q,R,scout = False):
     if scout: return track_mean,control_mean
 
     fig, ax1 = plt.subplots()
-    titlesting = "DeePC control"
+    titlesting = "DeePC control predictions"
     plt.title(titlesting,fontsize = 16)
-    ax1.set_ylabel("Outputs",fontsize = 16)
-    ax1.set_xlabel("Time",fontsize = 16)
+    ax1.set_ylabel("Position [m]",fontsize = 16)
+    ax1.set_xlabel("Ticks [#]",fontsize = 16)
     #ax1.plot(data[:,1],label='Init Data')
     ax1.plot(timeline,soll,label='set point',c="y")
-    #ax1.plot(timeline,predictions_y,label='predictions',c="r")
+    ax1.plot(timeline,predictions_y,label='predictions',c="r")
     ax1.plot(timeline,x_out,label="system behaviour",c="g")
     #ax1.plot(x_range_prediction_1,prediction_1,label='snapshot prediction 1',c="purple")
     #ax1.plot(x_range_prediction_2,prediction_2,label='snapshot prediction 2',c="purple")
     #ax1.plot(x_range_prediction_3,prediction_3,label='snapshot prediction 3',c="purple")
-    
-    #plt.legend(loc='lower right')
-    plt.legend(loc='upper right')
+
+    ax1.yaxis.set_major_locator(MultipleLocator(10))
+    #ax1.yaxis.set_minor_locator(MultipleLocator(0.2))
+    ax1.xaxis.set_major_locator(MultipleLocator(100))
+    #ax1.xaxis.set_minor_locator(MultipleLocator(50))
+    ax1.grid(which='both')
+    ax1.grid(which='minor', alpha=0.2, linestyle='--')
+    ax1.set_ylim([-20, 20])
+    plt.legend(loc='lower right')
+    #plt.legend(loc='upper right')
     # ...
     ax2 = ax1.twinx()
-    ax2.set_ylabel("Inputs",fontsize = 16)
+    ax2.set_ylabel("Input [N]",fontsize = 16)
     ax2.plot(timeline,inputs,label="applied inputs",c="b")
     #ax2.plot(data[:,0],label='Init inputs')
     #ax2.set_ylim([-7, 7])
-
+    ax2.yaxis.set_major_locator(MultipleLocator(2))
+    #ax2.yaxis.set_minor_locator(MultipleLocator(1))
+    ax2.set_ylim([-20, 20])
     plt.legend(loc='right')
     plt.show()
 
+    recordings = np.hstack([np.reshape(timeline,(len(timeline),1)),
+                    np.reshape(soll,(len(soll),1)),
+                    np.reshape(predictions_y,(len(predictions_y),1)),
+                    np.reshape(inputs,(len(inputs),1)),
+                    np.reshape(x_out,(len(x_out),1))])
+
+    #askSaveData(recordings)
 
 def SMDSystem_scout_lg_ls():
     tracking_means = []
@@ -1066,8 +1119,6 @@ def SMDSystem_scout_Q_R():
     fig.tight_layout()
     plt.show()
 
-
-
 def FederMasse_MPC():
 
     timestep = 0.1
@@ -1103,7 +1154,7 @@ def FederMasse_MPC():
     ax1.set_xlabel("Time [s]")
     ax1.set_ylabel("Position x [m]")
     ax1.plot(time,out_x,label="System position",c="g")
-    #ax1.plot(time,predicitons,label="Model prediction",c="r")
+    ax1.plot(time,predicitons,label="Model prediction",c="r")
     ax1.plot(time,soll,label="Reference [m]",c="tab:orange")
     plt.legend(loc=8)
     # ...
@@ -1115,6 +1166,13 @@ def FederMasse_MPC():
 
     plt.legend(loc=4)
     plt.show()
+    recordings = np.hstack([np.reshape(time,(len(time),1)),
+                        np.reshape(soll,(len(soll),1)),
+                        np.reshape(predicitons,(len(predicitons),1)),
+                        np.reshape(ins,(len(ins),1)),
+                        np.reshape(out_x,(len(out_x),1))])
+
+    askSaveData(recordings)
 
 def FederMasse_PID():
 
@@ -1289,25 +1347,23 @@ def BLDC_MOTOR_CONTROL():
     plt.legend(loc=4)
     plt.show()
 
-def AirFlow():
+def AirFlow(l_s,l_g,Q,R,scout):
     box = PC_INTERFACE()
+    """
     value = box.SetVoltage(0)
     
     timesteps = 1
     sim_time = 300
-    input_Voltage = 5.0
+    input_Voltage = 0
 
     recording_timeline = []
     recording_inputs = []
     recording_outputs = []
-    """
+    
+    value = box.SetVoltage(0)
+    print("Generating Sample Data")
     for i in range(int(round(sim_time/timesteps))):
-        
-        if i > 200:
-                input_Voltage = 400
-        if i <= 200:
-            input_Voltage = i
-
+        input_Voltage = int((1023.0/sim_time)*i) + random.randint(-5, 5)
         recording_inputs.append(input_Voltage)
         recording_timeline.append(i*timesteps)
         value = box.SetVoltage(input_Voltage)
@@ -1316,13 +1372,14 @@ def AirFlow():
 
     data = np.hstack([np.reshape(recording_inputs,(len(recording_inputs),1)),
                       np.reshape(recording_outputs,(len(recording_outputs),1))])
-    """
-    data_name = "VERUSCHSDATEN_RT_LABOR_1"
-    #SimpleSystems.saveAsCSV(data_name, data)
-    data = SimpleSystems.readFromCSV(data_name)
-    data = data[50:]
+    
 
-    """
+    #data_name = "VERUSCHSDATEN_RT_LABOR_1"
+    
+    #data = SimpleSystems.readFromCSV(data_name)
+    #data = data[50:]
+
+    
     ### PLOTTING COLLECTED DATA
     fig, ax1 = plt.subplots()
     titlesting = "Voltage"
@@ -1341,18 +1398,24 @@ def AirFlow():
 
     plt.legend(loc='upper right')
     plt.show()
-    """
     
+    askSaveData(data)
+    """
     
     #### DEEPC PREDICTION PART
     #print("len data:", len(data)," data: ",data,"shape: ",np.shape(data))
     # lambda_s":100000,
     # lambda_g":1000000
+    data_name = "sample-data-box-300-with-noise"
+    data_name = "Voltage_to_pressure_200"
+    
+    data = SimpleSystems.readFromCSV(data_name)
+    #data = data[50:]
     T_ini   =  2
-    T_f     = 15
-    settings = {"lambda_s":100000,
-                "lambda_g":1000000,
-                "out_constr_lb":[0],
+    T_f     = 5
+    settings = {"lambda_s":l_s,
+                "lambda_g":l_g,
+                "out_constr_lb":[10],
                 "out_constr_ub":[1000],
                 "in_constr_lb":[10],
                 "in_constr_ub":[1023],
@@ -1362,10 +1425,10 @@ def AirFlow():
 
     # Set up the Controller
     ctrl = DeePC.Controller(data,T_ini,T_f,1,1,**settings)
-    SOLLWERT = 10
+    SOLLWERT = 300
     ctrl.updateReferenceWaypoint([SOLLWERT])
-    ctrl.updateTrackingCost_Q([[3000]])
-    ctrl.updateControlCost_R([[0.1]])
+    ctrl.updateTrackingCost_Q([[Q]])
+    ctrl.updateControlCost_R([[R]])
 
     predictions_y = [0]
     applied_inputs = [0]
@@ -1378,32 +1441,20 @@ def AirFlow():
     #pid.sample_time = 0.1
     system_output = 0
     prev_output = 0
-    Control_input = 0
+    Control_input = 1
     prediction = 0
     u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
-    for i in range(0,1000):
+    for i in range(0,100):
         timeline.append(i)
         if i > T_f +3:
             u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
             Control_input = u[0][0]
             prediction = y_star[0][0]
-        
-        if i == 250:
-            SOLLWERT = 300
-            ctrl.updateReferenceWaypoint([SOLLWERT])
-        """
-        if i == 400:
-            SOLLWERT = 800
-            ctrl.updateReferenceWaypoint([SOLLWERT])
-        """
-        #Control_input = pid(system_output)
-        
 
         applied_input = Control_input
         prev_output = system_output
         system_output = box.SetVoltage(applied_input)
-        if system_output == None:
-            system_output = prev_output
+
         # record:
         soll.append(SOLLWERT)
         predictions_y.append(prediction)
@@ -1414,12 +1465,11 @@ def AirFlow():
 
         # user output:
         print(i,": in: ",round(applied_input), " out: ", round(system_output), " prediction: ",round(prediction))
-        time.sleep(0.01)
     
 
-    #track_mean,track_std = SimpleSystems.Evaluate_Tracking_Accuarcy(system_outputs,predictions_y)
-    #control_mean,control_std = SimpleSystems.Evaluate_Control_Accuarcy(soll,system_outputs)
-    #if scout: return track_mean,control_mean
+    track_mean,track_std = SimpleSystems.Evaluate_Tracking_Accuarcy(system_outputs,predictions_y)
+    control_mean,control_std = SimpleSystems.Evaluate_Control_Accuarcy(soll,system_outputs)
+    if scout: return track_mean,control_mean
 
     value = box.SetVoltage(0)
 
@@ -1443,16 +1493,80 @@ def AirFlow():
     plt.legend(loc='lower center')
 
 
-    recorings = np.hstack([np.reshape(timeline,(len(timeline),1)),
+    recordings = np.hstack([np.reshape(timeline,(len(timeline),1)),
                         np.reshape(soll,(len(soll),1)),
                         np.reshape(predictions_y,(len(predictions_y),1)),
                         np.reshape(applied_inputs,(len(applied_inputs),1)),
                         np.reshape(system_outputs,(len(system_outputs),1))])
 
-    #data_name = "VERUSCHSDATEN_RT_LABOR_EINFACHE_REGELUNG_AUF_SOLLWERT_mit_störung"
-    #print("SAVING AS: ",data_name)
-    #SimpleSystems.saveAsCSV(data_name, recorings)
+    #askSaveData(recordings)
 
+    plt.show()
+
+def AIRFLOWSystem_scout_Q_R():
+    tracking_means = []
+    control_means = []
+    ls_factor = 20
+    ls_scale = 200
+    
+    #ls_range = range(1,ls_scale,ls_factor)
+    Q  = [10**i for i in range(1,10)]
+    R  = [i for i in range(1,10)]
+    print(Q,R)
+    
+    for i in R:
+        temp1 = []
+        temp2 = []
+        print("R:",i," Q Range: ",Q)
+        for j in Q:
+            tm,cm = AirFlow(100000,1000000,j,i,True)
+            temp1.append(tm)
+            temp2.append(cm)
+        tracking_means.append(temp1)
+        control_means.append(temp2)
+    print("tracking_means len:",len(tracking_means)," type: ",type(tracking_means), " shape: ",np.shape(tracking_means))
+    tracking_means = np.asarray(tracking_means)
+    control_means = np.asarray(control_means)
+    print("tracking_means len:",len(tracking_means)," type: ",type(tracking_means), " shape: ",np.shape(tracking_means))
+    
+    filename = "tracking_mean_ls_lg_scan_AIRFLOW_system"
+    saveAsCSV(filename,tracking_means)
+    filename = "control_means_ls_lg_scan_AIRFLOW_system"
+    saveAsCSV(filename,control_means)
+
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    im = ax.imshow(tracking_means,cmap='YlGn')
+    ax.set_ylabel("R",fontsize = 16,rotation=0,weight = 'bold',labelpad=25)
+    ax.set_xlabel("Q",fontsize = 16,weight = 'bold')
+    ax.set_yticks(np.arange(tracking_means.shape[0]), minor=False)
+    ax.set_xticks(np.arange(tracking_means.shape[1]), minor=False)
+    plt.colorbar(im)
+    ax.set_yticklabels(['{:.1E}'.format(y) for y in R],fontsize = 14); # use LaTeX formatted labels
+    ax.set_xticklabels(['{:.1E}'.format(x) for x in Q],rotation=45,fontsize = 14); # use LaTeX formatted labels
+
+
+    ax.invert_yaxis()
+    ax.set_title("Prediction: Q vs R",fontsize = 20,weight = 'bold',pad = 25)
+    fig.tight_layout()
+    plt.show()
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    im = ax.imshow(control_means,cmap='YlGn')
+    ax.set_ylabel("R",fontsize = 16,rotation=0,weight = 'bold',labelpad=25)
+    ax.set_xlabel("Q",fontsize = 16,weight = 'bold')
+    ax.set_yticks(np.arange(control_means.shape[0]), minor=False)
+    ax.set_xticks(np.arange(control_means.shape[1]), minor=False)
+    plt.colorbar(im)
+    ax.set_yticklabels(['{:.1E}'.format(y) for y in R],fontsize = 14); # use LaTeX formatted labels
+    ax.set_xticklabels(['{:.1E}'.format(x) for x in Q],rotation=45,fontsize = 14); # use LaTeX formatted labels
+
+
+    ax.invert_yaxis()
+    ax.set_title("Set-point: Q vs R",fontsize = 20,weight = 'bold',pad = 25)
+    fig.tight_layout()
     plt.show()
 
 def BOX_TEST():
@@ -1475,41 +1589,315 @@ def BOX_SHOW_OUTPUT_CURVE():
     speed_values = []
     voltage_values = []
     box = PC_INTERFACE()
-    value = box.SetVoltage(1)
-    time.sleep(0.5)
+    value = None
+    box.SetVoltage(0)
+    time.sleep(3)
     for i in range(0,1000):
+        value = None
         set_val = i
-        value = box.SetVoltage(set_val)
+        while(value == None):
+            value = box.SetVoltage(set_val)
         pwm_values.append(set_val)
         voltage_values.append(int(value))
-
-        time.sleep(0.1)
+        #time.sleep(0.1)
 
     fig, ax1 = plt.subplots() 
-    plt.title("PRS per PWM input")
+    plt.title("Voltage Reading per PWM input")
     ax1.set_xlabel('PWM value') 
     ax1.set_ylabel('Voltage', color = 'red') 
     ax1.plot(pwm_values,voltage_values, color = 'red') 
 
 
     plt.show()
-    
 
+def BOX_ERROR_COMPENSATION(l_s,l_g,Q,R,scout = False):
+    box = PC_INTERFACE()
+    
+    value = box.SetVoltage(0)
+    
+    timesteps = 1
+    sim_time = 300
+    input_Voltage = 0
+
+    recording_timeline = []
+    recording_inputs = []
+    recording_outputs = []
+    value = box.SetVoltage(0)
+    """
+    print("Generating Sample Data")
+    for i in range(int(round(sim_time/timesteps))):
+        if i < 200:
+            input_Voltage = int((1023.0/sim_time)*i)
+        if i> 200:
+            input_Voltage = 600
+
+        recording_inputs.append(input_Voltage)
+        recording_timeline.append(i*timesteps)
+        value = box.SetVoltage(input_Voltage)
+        recording_outputs.append(value)
+
+
+    data = np.hstack([np.reshape(recording_inputs,(len(recording_inputs),1)),
+                      np.reshape(recording_outputs,(len(recording_outputs),1))])
+    
+    """
+    data_name = "BOX_INIT_DATA"
+    #data_name = "sample-data-box-300"
+    #saveAsCSV(data_name,data)
+    data = SimpleSystems.readFromCSV(data_name)
+    data = data[50:]
+
+    """
+    ### PLOTTING COLLECTED DATA
+    fig, ax1 = plt.subplots()
+    titlesting = "Voltage"
+    plt.title(titlesting)
+    ax1.set_ylabel("Pressure")
+    #ax1.plot(time,predictions,label='ALt_Pred.',c="r")
+    ax1.plot(data[:,1],label='Pressure Output',c="g")
+    #ax1.set_ylim([4500, 5500])
+    plt.legend(loc='upper center')
+    # ...
+    ax2 = ax1.twinx()
+    ax2.set_ylabel("Voltage")
+    ax2.plot(data[:,0],label="Voltage",c="c")
+    #ax2.plot(time,output_pitch_angle,label="output pitchangle",c="b")
+    #ax2.set_ylim([-90, 90])
+
+    plt.legend(loc='upper right')
+    plt.show()
+    """
+    #askSaveData(data)
+    
+    
+    #### DEEPC PREDICTION PART
+    #print("len data:", len(data)," data: ",data,"shape: ",np.shape(data))
+    # lambda_s":100000,
+    # lambda_g":1000000
+    #data_name = "Voltage_to_pressure_200"
+    data_name = "sample-data-box-300"
+    data = SimpleSystems.readFromCSV(data_name)
+    #data = data[:]
+    T_ini   =  3
+    T_f     = 5
+    settings = {"lambda_s":l_s,
+                "lambda_g":l_g,
+                "out_constr_lb":[1],
+                "out_constr_ub":[1000],
+                "in_constr_lb":[1],
+                "in_constr_ub":[1022],
+                "regularize":True,
+                "verbose":False}
+
+
+    # Set up the Controller
+    ctrl = DeePC.Controller(data,T_ini,T_f,1,1,**settings)
+    SOLLWERT = 300
+    ctrl.updateReferenceWaypoint([SOLLWERT])
+    ctrl.updateTrackingCost_Q([[Q]])
+    ctrl.updateControlCost_R([[R]])
+
+    predictions_y = [0]
+    applied_inputs = [0]
+    system_outputs = [0]
+    soll = [SOLLWERT]
+    timeline = [0]
+    ##for PID CONTROL
+    #pid = PID(1, 1, 0.1, setpoint=SOLLWERT)
+    #pid.output_limits = (0, 1024)
+    #pid.sample_time = 0.1
+    system_output = 0
+    prev_output = 0
+    Control_input = 1
+    prediction = 0
+    u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
+
+    for i in range(0,600):
+        timeline.append(i)
+        if i > T_f +3:
+            u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
+            Control_input = u[0][0]
+            prediction = y_star[0][0]
+
+        if i == 200:
+            SOLLWERT = 600
+            ctrl.updateReferenceWaypoint([SOLLWERT])
+        
+        # re-initalize
+        if i == 300:
+            starttime_re_init = time.time()
+            new_len = 250
+            data = np.hstack([np.reshape(applied_inputs[len(applied_inputs)-new_len:],(new_len,1)),
+                      np.reshape(system_outputs[len(system_outputs)-new_len:],(new_len,1))])
+            print("re-initalize:",len(data),np.shape(data))
+            ctrl = DeePC.Controller(data,T_ini,T_f,1,1,**settings)
+            endtime_re_init = time.time()
+
+
+        applied_input = Control_input
+        prev_output = system_output
+        system_output = box.SetVoltage(applied_input)
+
+        # record:
+        soll.append(SOLLWERT)
+        predictions_y.append(prediction)
+        applied_inputs.append(applied_input)
+        system_outputs.append(system_output)
+        # update controller
+        ctrl.updateIn_Out_Measures([applied_input],[system_output])
+
+        # user output:
+        print(i,": in: ",round(applied_input), " out: ", round(system_output), " prediction: ",round(prediction))
+    
+    print("Re-initalization took: ",(endtime_re_init - starttime_re_init)," seconds")
+
+    track_mean,track_std = SimpleSystems.Evaluate_Tracking_Accuarcy(system_outputs,predictions_y)
+    control_mean,control_std = SimpleSystems.Evaluate_Control_Accuarcy(soll,system_outputs)
+    if scout: return track_mean,control_mean
+
+    value = box.SetVoltage(0)
+
+    fig, ax1 = plt.subplots()
+    titlesting = "DeePC control"
+    plt.title(titlesting,fontsize = 16)
+    ax1.set_ylabel("Outputs[V]",fontsize = 16)
+    ax1.set_xlabel("Time",fontsize = 16)
+    #ax1.plot(data[:,1],label='Init Data')
+    ax1.plot(timeline,soll,label='set point',c="y")
+    ax1.plot(timeline,predictions_y,label='predictions',c="r")
+    ax1.plot(timeline,system_outputs,label="system behaviour",c="g")
+    plt.legend(loc='lower right')
+
+    # PLOT ON RIGHT AXIS
+    ax2 = ax1.twinx()
+    ax2.set_ylabel("Inputs[V]",fontsize = 16)
+    ax2.plot(timeline,applied_inputs,label="applied inputs",c="b")
+    #ax2.plot(data[:,0],label='Init inputs')
+    #ax2.set_ylim([-7, 7])
+    plt.legend(loc='lower center')
+
+
+    recordings = np.hstack([np.reshape(timeline,(len(timeline),1)),
+                        np.reshape(soll,(len(soll),1)),
+                        np.reshape(predictions_y,(len(predictions_y),1)),
+                        np.reshape(applied_inputs,(len(applied_inputs),1)),
+                        np.reshape(system_outputs,(len(system_outputs),1))])
+
+    #askSaveData(recordings)
+
+    plt.show()
+
+def askSaveData(data):
+    answer = "X"
+    while(answer != 'n' and answer != 'N' and answer != 'y' and answer != 'Y'):
+        answer = input("Save the Data?")
+        
+    if(answer == "n" or answer == "N" or answer == ""):
+        print("Discarding Data")
+    if(answer == "y" or answer == "Y"):
+        filename = input("Enter Filename:")
+        #data_name = "VERUSCHSDATEN_RT_LABOR_EINFACHE_REGELUNG_AUF_SOLLWERT_mit_störung"
+        print("SAVING AS: ",filename)
+        SimpleSystems.saveAsCSV(filename,data)
+        print("Saved.")
+
+def plotRecordedData():
+
+    #time setpoint prediction inputs outputs
+
+    #path = "C:\\Users\\Martin\\OneDrive\\RAS - Master\\Master Thesis\\Versuche-16.03\\"
+    path = ""
+
+    #filename = "SMD_with_MPC"
+    #filename = "SMD-slow-control-with-DeePC"
+    #filename = "SMD-fast-control-with-DeePC"
+    #filename = "SMD-normal-control-with-DeePC"
+    #filename = "LABOR_DEEPC_auf300_3_100000_6000000_30000_0.1_19" #to setpoint 300
+    ##filename = "LABOR_DEEPC_auf_4_600_100000_6000000_30000_0.1_18"#to setpoint 600
+    ##filename = "LABOR_DEEPC_auf300_störung_2_100000_6000000_30000_0.1_57" #to setpoint 300 with error
+    ##filename = "VERUSCHSDATEN_RT_LABOR_EINFACHE_REGELUNG_auf300_dann_auf_600_2" #step from 300 to 600
+    ##filename = "LABOR_DEEPC_to_600_error_too_big_1_100000_6000000_30000_0.1_23" # to 600 then error then input bound met
+    ##filename = "VERUSCHSDATEN_RT_LABOR_Kurve_abfahren"
+    ##filename = "VERUSCHSDATEN_RT_LABOR_1"
+    data = SimpleSystems.readFromCSV(path+filename)
+    print("Data length:",len(data), " shape: ",np.shape(data))
+    data = data[5:,:]
+    x = data[:,0]
+    print(x)
+    data_divisor = 1
+    setpoint = data[:,1]/data_divisor
+    predictions = data[:,2]/data_divisor
+    #predictions[0:50] = 0#[0 for i in range(50)]
+    inputs  = data[:,3]/data_divisor
+    outputs = data[:,4]/data_divisor
+    #inputs  = data[:,0]/data_divisor
+    #outputs = data[:,1]/data_divisor
+
+    fig, ax1 = plt.subplots()
+    #title_string = "DeePC Control With Step"
+    title_string = "DeePC control Fast"
+    plt.title(title_string,fontsize = 16)
+    #ax1.set_ylabel("Sensor Voltage [V]",fontsize = 16)
+    ax1.set_ylabel("Position [m]",fontsize = 16)
+    ax1.set_xlabel("Ticks [#]",fontsize = 16)
+    
+    # set up tick lines and grid
+    
+    ax1.yaxis.set_major_locator(MultipleLocator(1))
+    ax1.yaxis.set_minor_locator(MultipleLocator(0.2))
+    ax1.xaxis.set_major_locator(MultipleLocator(10))
+    ax1.xaxis.set_minor_locator(MultipleLocator(5))
+    #ax1.xaxis.set_major_locator(MultipleLocator(1))
+    #ax1.xaxis.set_minor_locator(MultipleLocator(0.5))
+
+    ax1.grid(which='both')
+
+    ax1.grid(which='minor', alpha=0.2, linestyle='--')
+    
+    
+    ax1.plot(x,setpoint,label='set point',c="y")
+    ax1.plot(x,predictions,label='predictions',c="r")
+    ax1.plot(x,outputs,label="system behaviour",c="g")
+    #ax1.plot(outputs,label="system behaviour",c="g")
+
+    plt.legend(loc='lower left')
+
+    # PLOT ON RIGHT AXIS
+    ax2 = ax1.twinx()
+    #ax2.set_ylabel("Motor Voltage [V]",fontsize = 16)
+    ax2.set_ylabel("Force [N]",fontsize = 16)
+    
+    ax2.plot(x,inputs,label="applied inputs",c="b")
+    #ax2.plot(inputs,label="applied inputs",c="b")
+    
+    ax2.yaxis.set_major_locator(MultipleLocator(2))
+    ax2.yaxis.set_minor_locator(MultipleLocator(1))
+    plt.legend(loc='lower center')
+    plt.show()
 
 #main5()
 #main3()
 #main4()
 ##ls lg Q R
-#ISystem_1(1,1,5,1)
+ISystem_1(30,1,1,0.1)
 #ISystem_scout_lg_ls()
 #ISystem_scout_Q_R()
 
-#FederMasse(1,1,1,3)
+#FederMasse(1000000,100000000,10000000,1) #general
+#FederMasse(1,1,1,3) #Slow control
+#FederMasse(10,1,20,1) #Fast control
+#FederMasse(100000,10,15,1)
 #BOX_SHOW_OUTPUT_CURVE()
-AirFlow()
-#BOX_TEST()
+#AirFlow(100000,1000000,1000,5,False)
+#AIRFLOWSystem_scout_Q_R()
 #SMDSystem_scout_lg_ls()
 #SMDSystem_scout_Q_R()
+
+
+#BOX_ERROR_COMPENSATION(10000,50000,40,0.1,False)
+
+#plotRecordedData()
+
 #main2()
 #Chessna()
 #Chessna_2()

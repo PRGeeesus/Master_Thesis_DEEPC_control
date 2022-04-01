@@ -441,23 +441,31 @@ class FederMasseSystem:
     def __init__(self,timestep) -> None:
         # Parameters defining the system
         self.timestep = timestep
-        c = 4 # Damping constant
-        k = 2 # Stiffness of the spring
-        m = 20 # Mass
-        F = 5 # Force
+        self.c = 4 # Damping constant
+        self.k = 2 # Stiffness of the spring
+        self.m = 20 # Mass
+        self.F = 5 # Force
         # Simulation Parameters
         # System matrices
-        A = np.array([[0, 1], [-k/m, -c/m]])
-        B = np.array([[0], [1/m]])
-        C = np.array([[1, 0]])
-        self.A = np.eye(2) + A*self.timestep
-        self.B = B*self.timestep
-        self.C = C
+        self.A = np.array([[0, 1], [-self.k/self.m, -self.c/self.m]])
+        self.B = np.array([[0], [1/self.m]])
+        self.C = np.array([[1, 0]])
+        self.A = np.eye(2) + self.A*self.timestep
+        self.B = self.B*self.timestep
+        self.C = self.C
         self.x0 = np.array([0.0,0.0])
 
         self.out_pos = []
         self.out_vel = []
         self.in_force = []
+
+    def changeSystem(self):
+        self.A = np.array([[0, 1], [-self.k/self.m, -self.c/self.m]])
+        self.B = np.array([[0], [1/self.m]])
+        self.C = np.array([[1, 0]])
+        self.A = np.eye(2) + self.A*self.timestep
+        self.B = self.B*self.timestep
+        self.C = self.C
 
     def resetSystem(self):
         self.x0 = np.array([0.,0.])

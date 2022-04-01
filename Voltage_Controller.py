@@ -8,7 +8,7 @@ import matplotlib.animation as animation
 from matplotlib import style
 
 class PC_INTERFACE():
-    def __init__(self,port ='COM3',baudrate=19200,timeout=.000001,parity=serial.PARITY_NONE,stopbits=serial.STOPBITS_ONE,bytesize=serial.EIGHTBITS):
+    def __init__(self,port ='COM5',baudrate=19200,timeout=.001,parity=serial.PARITY_NONE,stopbits=serial.STOPBITS_ONE,bytesize=serial.EIGHTBITS):
         self.port = port
         self.baudrate = baudrate
         self.timeout = timeout
@@ -52,18 +52,21 @@ class PC_INTERFACE():
         #self.arduino.write(bytes(str(num),'ascii'))
         for i in num:
             self.arduino.write(bytes('{}'.format(i),'ascii'))
+        
+        time.sleep(0.002)
         #data = box.arduino.read()
         data = self.arduino.readline()
         #self.arduino.reset_input_buffer()
         #
+        #print("Recieved: ",data," ",len(data))
         if data != b'':
             str_ret = bytes.decode(data)
-            #print("Recieved:",data," ",len(str_ret)," ",len(data))
+            #print("Recieved:",data," - len:",len(data))
             if(len(str_ret) <= 3):
                 int_ret = int(str_ret)
-                if(int_ret > 0 and int_ret < 1000):
+                if(int_ret >= 0 and int_ret < 1000):
                     return int_ret
-        return None
+        return 0
 
     def ESC_RW(self):
         self.prev_pos = self.pos

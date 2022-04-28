@@ -1448,11 +1448,12 @@ def AirFlow(l_s,l_g,Q,R,scout):
         timeline.append(i)
         if i > T_f +3:
             u,y,u_star,y_star,g = ctrl.getInputOutputPrediction()
-            Control_input = u[0][0]
+            Control_input = u[0][0] #this is a
             prediction = y_star[0][0]
 
         applied_input = Control_input
         prev_output = system_output
+                                        #inside is c and behind the ) is d
         system_output = box.SetVoltage(applied_input)
 
         # record:
@@ -1461,6 +1462,7 @@ def AirFlow(l_s,l_g,Q,R,scout):
         applied_inputs.append(applied_input)
         system_outputs.append(system_output)
         # update controller
+                                    #this is b
         ctrl.updateIn_Out_Measures([applied_input],[system_output])
 
         # user output:
@@ -1801,13 +1803,51 @@ def askSaveData(data):
         SimpleSystems.saveAsCSV(filename,data)
         print("Saved.")
 
+def plotTimingsData():
+    path = "C:\\Users\\Martin\\OneDrive\\RAS - Master\\Master Thesis\\Versuche_01.04\\"
+    filename = "Timings_1600_ticks_klappe_nach_400_compensation_nach_800"
+    title_string = "Timing Frequencies "
+    data = SimpleSystems.readFromCSV(path+filename)
+
+    print("Data len:",len(data)," shape: ", np.shape(data))
+    x_ticks = data[:,0]
+    timings = data[:,1]*1000
+    timings = timings[1:]
+    mean = np.mean(timings)
+    stddev = np.std(timings)
+    max_time = np.max(timings)
+    min_time = np.min(timings)
+
+    print(timings)
+
+    print("mean: ",mean," std: ",stddev," max: ",max_time,"min: ",min_time)
+
+    fig, ax1 = plt.subplots()
+    ax1.hist(timings, [i*10 for i in range(15)])
+    plt.title(title_string,fontsize = 16)
+    #ax1.grid(which='both')
+    ax1.grid(which='minor', alpha=0.2, linestyle='--')
+    ax1.grid(which='major', alpha=0.2, linestyle='-')
+    ax1.grid(which='major', axis='x', alpha=0.5, linestyle='-')
+    ax1.xaxis.set_major_locator(MultipleLocator(10))
+    ax1.yaxis.set_major_locator(MultipleLocator(100))
+    ax1.yaxis.set_minor_locator(MultipleLocator(20))
+    #ax1.xaxis.set_minor_locator(MultipleLocator(0.005))
+
+    # Labels
+    ax1.set_ylabel("Frequency",fontsize = 16)
+    ax1.set_xlabel("Loop time [ms]",fontsize = 16)
+    plt.xticks(rotation=45)
+    plt.show()
+
 def plotRecordedData():
 
     #time setpoint prediction inputs outputs
 
-    #path = "C:\\Users\\Martin\\OneDrive\\RAS - Master\\Master Thesis\\Versuche-16.03\\"
-    path = ""
-
+    path = "C:\\Users\\Martin\\OneDrive\\RAS - Master\\Master Thesis\\Versuche-16.03\\"
+    #path = "C:\\Users\\Martin\\OneDrive\\RAS - Master\\Master Thesis\\Versuche_01.04\\"
+    #path = ""
+    ### Versuche-16.03:
     #filename = "SMD_with_MPC"
     #filename = "SMD-slow-control-with-DeePC"
     #filename = "SMD-fast-control-with-DeePC"
@@ -1817,36 +1857,92 @@ def plotRecordedData():
     ##filename = "LABOR_DEEPC_auf300_störung_2_100000_6000000_30000_0.1_57" #to setpoint 300 with error
     ##filename = "VERUSCHSDATEN_RT_LABOR_EINFACHE_REGELUNG_auf300_dann_auf_600_2" #step from 300 to 600
     ##filename = "LABOR_DEEPC_to_600_error_too_big_1_100000_6000000_30000_0.1_23" # to 600 then error then input bound met
-    ##filename = "VERUSCHSDATEN_RT_LABOR_Kurve_abfahren"
+    filename = "VERUSCHSDATEN_RT_LABOR_Kurve_abfahren"
     ##filename = "VERUSCHSDATEN_RT_LABOR_1"
+
+    #           Versuche_01.04
+    #--- NORMAL ERRORS
+    #filename = "Error_trials_re_initalize_without_error_At_500_ticks"
+    #filename = "Error_trials_normal_control_to_setpoint"
+
+    #filename = "Error_trials_20_offset_on_a"
+    #filename = "Error_trials_constant_offfset_20_at_a_numpy"
+    #filename = "Error_trials_constant_offfset_20_at_a"
+    #filename = "Error_trials_constant_offfset_20_at_b"
+    #filename = "Error_trials_constant_offfset_20_at_c"
+    #filename = "Error_trials_constant_offfset_20_at_d"
+
+    #filename = "Error_trials_increasing_offfset_20_at_a"
+    #filename = "Error_trials_increasing_offfset_10_at_b_numpy"
+    #filename = "Error_trials_increasing_offfset_10_at_c_numpy"
+    #filename = "Error_trials_increasing_offfset_10_at_d_numpy"
+
+    #filename = "Error_trials_random_offsetpm10_at_a"
+    #filename = "Error_trials_random_offsetpm10_at_b"
+    #filename = "Error_trials_random_offsetpm10_at_c"
+    #filename = "Error_trials_random_offsetpm10_at_d"
+
+    #---COMPENSATED ERRORS
+    #filename = "Error_trials_klappe_nach_400_mit_compensation_worked"
+    #filename = "Error_trials_klappe_nach_500_mit_compensation_worked"
+    #filename = "Error_trials_re_initalize_without_error_At_500_ticks"
+
+    #filename = "Error_trials_constant_offfset_20_at_a_with_compensation_last_200"
+    ##filename = "Error_trials_constant_offfset_20_at_b_with_compensation_last_200"
+    ##filename = "Error_trials_constant_offfset_20_at_c_with_compensation_first_200"
+    #filename = "Error_trials_constant_offfset_20_at_d_with_compensation_first_200"
+    
+    #filename = "Error_trials_increasing_offfset_20_at_a_with_compensation"
+    #filename = "Error_trials_increasing_offfset_10_at_b_with_compensation"
+    #filename = "Error_trials_increasing_offfset_20_at_d_with_compensation"
+
+    #filename = "Error_trials_random_offsetpm10_at_a_with_conpensation"
+    #filename = "Error_trials_random_offsetpm10_at_d_with_conpensation"
+
+    #filename = "Timings_1600_ticks_klappe_nach_400_compensation_nach_800"
+
+    #title_string = "DeePC Control - Constant Error"
+    #title_string = "DeePC Control - Increasing Error"
+    #title_string = "DeePC Control - Random Error"
+    #title_string = "DeePC Control - Constant Error - Re-Initialzed"
+    #title_string = "DeePC Control - Increasing Error - Re-Initialzed"
+    #title_string = "DeePC Control - Random Error - Re-Initialzed"
+    #title_string = "DeePC Control - Re-Initialzed without Error"
+    #title_string = "Timing Frequencies"
+    title_string = "Airflow System Input/Output Relation"
+    
+    #title_string = "Input (right) to Output(left) Relation Curve"
+    mode = "2data"
+    #mode = "5data"
     data = SimpleSystems.readFromCSV(path+filename)
     print("Data length:",len(data), " shape: ",np.shape(data))
-    data = data[5:,:]
+    data = data[10:,:]
     x = data[:,0]
-    print(x)
-    data_divisor = 1
-    setpoint = data[:,1]/data_divisor
-    predictions = data[:,2]/data_divisor
-    #predictions[0:50] = 0#[0 for i in range(50)]
-    inputs  = data[:,3]/data_divisor
-    outputs = data[:,4]/data_divisor
-    #inputs  = data[:,0]/data_divisor
-    #outputs = data[:,1]/data_divisor
-
+    #print(x)
+    data_divisor = 100
+    if mode == "2data":
+        inputs  = data[:,0]/data_divisor
+        outputs = data[:,1]/data_divisor
+    else:
+        setpoint = data[:,1]/data_divisor
+        predictions = data[:,2]/data_divisor
+        #predictions[0:50] = 0#[0 for i in range(50)]
+        inputs  = data[:,3]/data_divisor
+        outputs = data[:,4]/data_divisor
+    #outputs[:38] = 1.81
+    #print(outputs)
     fig, ax1 = plt.subplots()
-    #title_string = "DeePC Control With Step"
-    title_string = "DeePC control Fast"
     plt.title(title_string,fontsize = 16)
-    #ax1.set_ylabel("Sensor Voltage [V]",fontsize = 16)
-    ax1.set_ylabel("Position [m]",fontsize = 16)
+    ax1.set_ylabel("Sensor Voltage [V]",fontsize = 16)
+    #ax1.set_ylabel("Position [m]",fontsize = 16)
     ax1.set_xlabel("Ticks [#]",fontsize = 16)
     
     # set up tick lines and grid
     
     ax1.yaxis.set_major_locator(MultipleLocator(1))
     ax1.yaxis.set_minor_locator(MultipleLocator(0.2))
-    ax1.xaxis.set_major_locator(MultipleLocator(10))
-    ax1.xaxis.set_minor_locator(MultipleLocator(5))
+    ax1.xaxis.set_major_locator(MultipleLocator(100))
+    ax1.xaxis.set_minor_locator(MultipleLocator(50))
     #ax1.xaxis.set_major_locator(MultipleLocator(1))
     #ax1.xaxis.set_minor_locator(MultipleLocator(0.5))
 
@@ -1854,32 +1950,40 @@ def plotRecordedData():
 
     ax1.grid(which='minor', alpha=0.2, linestyle='--')
     
-    
-    ax1.plot(x,setpoint,label='set point',c="y")
-    ax1.plot(x,predictions,label='predictions',c="r")
-    ax1.plot(x,outputs,label="system behaviour",c="g")
-    #ax1.plot(outputs,label="system behaviour",c="g")
+    if mode == "2data":
+        #ax1.plot(outputs,label="system behaviour",c="g")
+        ax1.plot(outputs,label="sensor voltage (output)",c="g")
+    else:
+        ax1.plot(x,setpoint,label='set point',c="y")
+        ax1.plot(x,predictions,label='predictions',c="r")
+        ax1.plot(x,outputs,label="system behaviour",c="g")
+        
 
-    plt.legend(loc='lower left')
+    plt.legend(loc='lower center')
 
     # PLOT ON RIGHT AXIS
     ax2 = ax1.twinx()
-    #ax2.set_ylabel("Motor Voltage [V]",fontsize = 16)
-    ax2.set_ylabel("Force [N]",fontsize = 16)
+    ax2.set_ylabel("Motor Voltage [V]",fontsize = 16)
+    #ax2.set_ylabel("Force [N]",fontsize = 16)
     
-    ax2.plot(x,inputs,label="applied inputs",c="b")
-    #ax2.plot(inputs,label="applied inputs",c="b")
-    
+    if mode == "2data":
+        #ax2.plot(inputs,label="applied inputs",c="b")
+        ax2.plot(inputs,label="motor voltage (input)",c="b")
+        
+    else:
+        ax2.plot(x,inputs,label="applied inputs",c="b")
+
     ax2.yaxis.set_major_locator(MultipleLocator(2))
     ax2.yaxis.set_minor_locator(MultipleLocator(1))
-    plt.legend(loc='lower center')
+    plt.legend(loc='lower right')
+    #plt.legend(loc='best')
     plt.show()
 
 #main5()
 #main3()
 #main4()
 ##ls lg Q R
-ISystem_1(30,1,1,0.1)
+#ISystem_1(30,1,1,0.1)
 #ISystem_scout_lg_ls()
 #ISystem_scout_Q_R()
 
@@ -1896,7 +2000,9 @@ ISystem_1(30,1,1,0.1)
 
 #BOX_ERROR_COMPENSATION(10000,50000,40,0.1,False)
 
-#plotRecordedData()
+plotRecordedData()
+#plotTimingsData()
+
 
 #main2()
 #Chessna()
